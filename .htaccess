@@ -1,6 +1,10 @@
 # Raíz del repo publicada en rotulos.bagsstore.com.ar (Ferozo GIT -> /public_html/rotulos/).
 # La app vive en "impresion de rotulos/": se sirve desde ahí sin cambiar la URL.
 RewriteEngine On
+
+# Carpetas internas: no se sirven (ni desde la raíz ni desde la subcarpeta)
+RewriteRule "^(impresion de rotulos/)?(supabase|datos-privados)(/|$)" - [R=404,L]
+
 RewriteRule "^(?!impresion de rotulos/)(.*)$" "impresion de rotulos/$1" [L]
 
 <Files "README.md">
