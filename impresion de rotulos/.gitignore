@@ -1,0 +1,6 @@
+# Datos personales de clientes (copias, exportaciones, importación inicial)
+datos-privados/
+*.json
+# Archivos de Windows
+Thumbs.db
+desktop.ini

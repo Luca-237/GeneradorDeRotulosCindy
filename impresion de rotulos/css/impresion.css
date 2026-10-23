@@ -1,0 +1,49 @@
+/* =====================================================================
+   Estilos de IMPRESION: solo se imprimen los rotulos.
+   El tamano de hoja (@page) lo escribe js/vistas/rotulos.js en
+   <style id="page-style"> segun la medida, el papel y el giro elegidos.
+   Estructura: .hoja (una por pagina) > .giro (rota 90°) > svg.rotulo (escala/mueve).
+
+   Cada .hoja mide lo que pide la app (ej. 6,5 x 10 cm), PERO nunca mas que la
+   pagina real (100vw x 100vh): si el driver de la impresora le da a Chrome un
+   papel un poco distinto ("User defined" de la Zebra), el rotulo se adapta en
+   vez de desbordar a una segunda hoja. Ademas se le resta --holgura en el largo
+   porque, si mide exacto lo mismo que la pagina, el redondeo a pixeles la pasa
+   por una fraccion y Chrome agrega una hoja casi vacia.
+   ===================================================================== */
+@media print {
+  /* 2 mm: cubre papeles del driver de hasta 9,8 cm aunque Chrome no informe bien 100vh */
+  :root { --holgura: 2mm; }
+  html, body { background:#fff; height:auto; margin:0; }
+  .panel, .preview-head, .pantalla, .toast, dialog { display:none !important; }
+  .app { display:block; padding:0; min-height:0; }
+  #hojas { display:block; }
+  .hoja, .hoja * { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+
+  /* --- Modo etiqueta: una .hoja por pagina --- */
+  /* --wp/--hp: medida pedida x correccion de escala de la impresora (js/vistas/rotulos.js) */
+  body.modo-etiqueta { --pw: var(--wp, var(--w)); --ph: var(--hp, var(--h)); }  /* acostada */
+  body.modo-etiqueta.girar { --pw: var(--hp, var(--h)); --ph: var(--wp, var(--w)); }  /* de punta: pagina parada */
+  body.modo-etiqueta .hoja {
+    --hw: min(var(--pw), 100vw);
+    --hh: min(calc(var(--ph) - var(--holgura)), calc(100vh - var(--holgura)));
+    width:var(--hw); height:var(--hh);
+    box-shadow:none; max-width:none; aspect-ratio:auto;
+    break-inside:avoid; page-break-inside:avoid;
+    break-after:page; page-break-after:always;
+  }
+  body.modo-etiqueta .hoja:last-child { break-after:auto; page-break-after:auto; }
+  body.modo-etiqueta .hoja .giro { width:var(--hw); height:var(--hh); }
+  /* el corrimiento en mm tambien se corrige por la escala de la impresora */
+  body.modo-etiqueta .hoja .rotulo { transform:translate(var(--dxp, var(--dx)), var(--dyp, var(--dy))) scale(var(--esc, 1)); }
+
+  /* De punta: el rotulo (acostado) se gira 90° para ocupar la hoja parada */
+  body.modo-etiqueta.girar .hoja .giro { width:var(--hh); height:var(--hw); transform-origin:top left; }
+  body.modo-etiqueta.girar-der .hoja .giro { transform:translateX(var(--hw)) rotate(90deg); }
+  body.modo-etiqueta.girar-izq .hoja .giro { transform:translateY(var(--hh)) rotate(-90deg); }
+
+  /* --- Modo A4: varios por hoja, tamano exacto --- */
+  body.modo-a4 #hojas { display:flex; flex-wrap:wrap; gap:4mm; align-content:flex-start; }
+  body.modo-a4 .hoja { width:var(--w); height:var(--h); box-shadow:none; max-width:none; aspect-ratio:auto; break-inside:avoid; page-break-inside:avoid; }
+  body.modo-a4 .hoja .giro { width:var(--w); height:var(--h); }
+}

@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Generador de rótulos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600&family=Lora:ital,wght@0,600;1,500&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%23e84e1b'/%3E%3Ctext x='16' y='23' text-anchor='middle' font-family='Georgia,serif' font-size='20' fill='%23fff'%3EC%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/app.css?v=20261023.8">
+<link rel="stylesheet" href="css/impresion.css?v=20261023.8">
+<!-- Tamaño de hoja para imprimir: lo escribe js/vistas/rotulos.js -->
+<style id="page-style"></style>
+</head>
+<body class="modo-etiqueta">
+
+<!-- ============ Falta configurar la conexión ============ -->
+<section class="pantalla" id="pantalla-config" hidden>
+  <div class="tarjeta">
+    <header class="marca">
+      <span class="isotipo" aria-hidden="true">C</span>
+      <span><span class="titulo">Generador de rótulos</span><span class="sub">Cindy Mayorista · Envíos</span></span>
+    </header>
+    <p><strong>Falta conectar la base de datos.</strong></p>
+    <p>Completá <code>supabaseUrl</code> y <code>supabaseKey</code> en <code>js/config.js</code> y recargá la página.</p>
+    <p>El paso a paso está en <code>SUPABASE-SETUP.md</code>.</p>
+  </div>
+</section>
+
+<!-- ============ Cargando ============ -->
+<section class="pantalla" id="pantalla-carga">
+  <p class="cargando">Cargando…</p>
+</section>
+
+<!-- ============ Login ============ -->
+<section class="pantalla" id="pantalla-login" hidden>
+  <form class="tarjeta" id="form-login" autocomplete="on">
+    <header class="marca">
+      <span class="isotipo" aria-hidden="true">C</span>
+      <span><span class="titulo">Generador de rótulos</span><span class="sub">Cindy Mayorista · Envíos</span></span>
+    </header>
+    <label for="login-email">Usuario</label>
+    <input id="login-email" type="text" autocomplete="username" autocapitalize="off" spellcheck="false" required>
+    <label for="login-password">Contraseña</label>
+    <input id="login-password" type="password" autocomplete="current-password" required>
+    <button class="btn" id="login-btn" type="submit">Ingresar</button>
+    <div class="mensaje-error" id="login-error" role="alert"></div>
+  </form>
+</section>
+
+<!-- ============ Aplicación ============ -->
+<div class="app" id="app" hidden>
+  <form class="panel" id="form" autocomplete="off" onsubmit="return false">
+    <header class="marca">
+      <span class="isotipo" aria-hidden="true">C</span>
+      <span><span class="titulo">Generador de rótulos</span><span class="sub">Cindy Mayorista · Envíos</span></span>
+    </header>
+    <div class="usuario-bar">
+      <span class="quien"><span id="usuario-nombre"></span><span class="rol" id="usuario-rol"></span></span>
+      <span class="acciones-usuario">
+        <button type="button" class="link" id="abrir-usuarios" data-solo-superadmin hidden>Usuarios</button>
+        <button type="button" class="link" id="salir">Salir</button>
+      </span>
+    </div>
+
+    <h2>Destinatario</h2>
+    <div class="buscador">
+      <label for="buscar">Cliente</label>
+      <div class="buscar-wrap">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <input id="buscar" placeholder="Buscar por nombre, DNI/CUIT, teléfono o ciudad" role="combobox" aria-expanded="false" aria-controls="resultados">
+      </div>
+      <ul class="resultados" id="resultados" role="listbox" hidden></ul>
+    </div>
+    <div class="cliente-estado" id="cliente-estado" hidden>
+      <span id="cliente-estado-txt"></span>
+      <button type="button" class="link" id="cambiar-cliente">Cambiar</button>
+    </div>
+
+    <label for="nombre">Nombre</label>
+    <input class="upper" id="nombre" data-campo>
+    <label for="direccion">Dirección</label>
+    <input class="upper" id="direccion" data-campo>
+    <div class="row">
+      <div><label for="ciudad">Ciudad</label><input class="upper" id="ciudad" data-campo></div>
+      <div><label for="provincia">Provincia</label><input class="upper" id="provincia" data-campo list="provincias"></div>
+    </div>
+    <div class="row">
+      <div><label for="cp">CP</label><input class="upper" id="cp" data-campo inputmode="numeric"></div>
+      <div><label for="dni">DNI/CUIT</label><input class="upper" id="dni" data-campo></div>
+    </div>
+    <label for="tel">Teléfono</label>
+    <input class="upper" id="tel" data-campo inputmode="tel">
+    <label for="email">Email</label>
+    <input class="upper" id="email" data-campo type="text" inputmode="email">
+    <label class="check"><input type="checkbox" id="guardar-transporte" checked> Recordar el transporte para este cliente</label>
+    <button type="button" class="btn-sec" id="guardar-cliente" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></svg>
+      <span id="guardar-cliente-txt">Guardar cliente</span>
+    </button>
+
+    <h2>Envío</h2>
+    <label for="transporte">Transporte</label>
+    <select id="transporte" data-campo></select>
+    <div class="nuevo-transporte" id="nuevo-transporte" hidden>
+      <input class="upper" id="nuevo-transporte-txt" placeholder="Nombre del transporte">
+      <button type="button" class="btn-mini" id="nuevo-transporte-ok">Agregar</button>
+      <button type="button" class="link" id="nuevo-transporte-cancel">Cancelar</button>
+    </div>
+    <div class="row">
+      <div><label for="total">Total de bultos</label><input id="total" data-campo type="number" min="1" max="500" step="1" value="1"></div>
+      <div><label for="solo">Reimprimir solo</label><input id="solo" data-campo placeholder="ej: 3, 7-9"></div>
+    </div>
+    <div class="error" id="err-solo" hidden></div>
+
+    <h2>Medida</h2>
+    <label for="preset">Tamaño del rótulo</label>
+    <select id="preset">
+      <option value="10x6.5" selected>Etiqueta 10 × 6,5 cm</option>
+      <option value="15">15 × 9,5 cm</option>
+      <option value="20">20 × 12,6 cm</option>
+      <option value="27.7">27,7 × 17,5 cm (A4 entera)</option>
+      <option value="custom">Personalizado…</option>
+    </select>
+    <div class="row">
+      <div><label for="ancho">Ancho (cm)</label><input id="ancho" type="number" min="3" max="60" step="0.1" value="10"></div>
+      <div><label for="alto">Alto (cm)</label><input id="alto" type="number" min="2" max="40" step="0.1"></div>
+    </div>
+    <div class="hint">El rótulo nunca se deforma. En la etiqueta de 10 × 6,5 cm queda centrado; en "Personalizado", el alto y el ancho se ajustan solos para mantener la proporción.</div>
+    <label for="papel">Papel</label>
+    <select id="papel">
+      <option value="etiqueta">Un rótulo por página (etiquetera)</option>
+      <option value="a4v">Hoja A4 vertical (varios por hoja)</option>
+      <option value="a4h">Hoja A4 horizontal (varios por hoja)</option>
+    </select>
+
+    <details>
+      <summary>Ajuste de impresión (Zebra)</summary>
+      <label for="ajuste-giro">Giro del rótulo</label>
+      <select id="ajuste-giro">
+        <option value="no" selected>Sin girar (recomendado)</option>
+        <option value="der">Girar 90° → (solo si no se puede configurar el driver)</option>
+        <option value="izq">Girar 90° ← (ídem, para el otro lado)</option>
+      </select>
+      <div class="hint">Dejar en "Sin girar". La orientación la resuelve el driver ZDesigner GK420t: papel <strong>100 × 65 mm</strong>, orientación <strong>Horizontal</strong> (ver CONFIGURAR-ZEBRA-GK420t.md).</div>
+      <label for="ajuste-intensidad">Intensidad de la tinta</label>
+      <select id="ajuste-intensidad">
+        <option value="normal">Normal (letra fina)</option>
+        <option value="reforzada" selected>Reforzada (recomendada para térmica)</option>
+        <option value="maxima">Máxima (si sale muy claro)</option>
+      </select>
+      <div class="row">
+        <div><label for="ajuste-cm">1 cm impreso mide (mm)</label><input id="ajuste-cm" type="number" min="5" max="15" step="0.1" value="10" title="Medilo con una regla en la hoja de prueba. 10 = sin corrección."></div>
+        <div><label for="ajuste-escala">Tamaño (%)</label><input id="ajuste-escala" type="number" min="50" max="100" step="1" value="100"></div>
+      </div>
+      <div class="hint">"1 cm impreso mide": dejar en <strong>10</strong>. Si la hoja de prueba sale chica (ej. 7,5 mm por cm), el problema es el papel cargado en el driver (debe ser 100 × 65 mm): Chrome encaja la hoja en ese papel y esto no lo compensa. Usarlo solo para una diferencia chica con el papel ya correcto (ej. 9,8).</div>
+      <div class="row">
+        <div><label for="ajuste-x">Mover → (mm)</label><input id="ajuste-x" type="number" min="-20" max="20" step="0.5" value="0"></div>
+        <div><label for="ajuste-y">Mover ↓ (mm)</label><input id="ajuste-y" type="number" min="-20" max="20" step="0.5" value="0"></div>
+      </div>
+      <div class="hint">Se guarda en esta computadora. Sirve para encuadrar el rótulo en la etiqueta una vez que la impresora está bien configurada (ver IMPRIMIR-EN-ZEBRA.md). Valores negativos mueven a la izquierda o hacia arriba.</div>
+      <div class="acciones" style="margin-top:8px">
+        <button type="button" class="btn-mini" id="imprimir-prueba">Imprimir hoja de prueba</button>
+        <button type="button" class="btn-mini" id="ajuste-reset">Valores iniciales</button>
+      </div>
+      <div class="hint">La hoja de prueba tiene reglas en centímetros y una flecha de "arriba": muestra si la impresora gira o achica la hoja.</div>
+    </details>
+
+    <details>
+      <summary>Datos del remitente</summary>
+      <label for="rem1">Línea 1</label><input class="upper" id="rem1" data-campo>
+      <label for="rem2">Línea 2</label><input class="upper" id="rem2" data-campo>
+      <label for="rem3">Línea 3</label><input class="upper" id="rem3" data-campo>
+      <label for="rem4">Línea 4</label><input class="upper" id="rem4" data-campo>
+      <div class="hint">Los cambios acá valen solo para esta impresión.</div>
+      <button type="button" class="btn-mini" id="guardar-remitente" data-solo-superadmin hidden style="margin-top:8px">Guardar para todos</button>
+    </details>
+
+    <button class="btn" id="imprimir" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/></svg>
+      Imprimir rótulos
+    </button>
+    <div class="resumen" id="resumen"></div>
+
+    <details>
+      <summary>Lista de clientes</summary>
+      <div class="hint" id="clientes-count"></div>
+      <div class="acciones">
+        <button type="button" class="btn-mini" id="actualizar-clientes">Actualizar lista</button>
+        <button type="button" class="btn-mini" id="exportar" data-solo-superadmin hidden>Exportar</button>
+        <label class="btn-mini file" data-solo-superadmin hidden>Importar<input type="file" id="importar" accept=".json,application/json" hidden></label>
+      </div>
+      <div class="hint">La lista está en la base de datos y la comparten todos los usuarios.</div>
+    </details>
+
+    <datalist id="provincias">
+      <option value="BUENOS AIRES"><option value="CABA"><option value="CATAMARCA"><option value="CHACO"><option value="CHUBUT">
+      <option value="CÓRDOBA"><option value="CORRIENTES"><option value="ENTRE RÍOS"><option value="FORMOSA"><option value="JUJUY">
+      <option value="LA PAMPA"><option value="LA RIOJA"><option value="MENDOZA"><option value="MISIONES"><option value="NEUQUÉN">
+      <option value="RÍO NEGRO"><option value="SALTA"><option value="SAN JUAN"><option value="SAN LUIS"><option value="SANTA CRUZ">
+      <option value="SANTA FE"><option value="SANTIAGO DEL ESTERO"><option value="TIERRA DEL FUEGO"><option value="TUCUMÁN">
+    </datalist>
+  </form>
+
+  <main class="preview">
+    <p class="preview-head" id="preview-head"></p>
+    <div id="hojas"></div>
+  </main>
+</div>
+
+<!-- ============ Usuarios (solo superadmin) ============ -->
+<dialog class="dlg" id="dlg-usuarios">
+  <div class="dlg-head">
+    <h3>Usuarios</h3>
+    <button type="button" class="btn-cerrar" id="cerrar-usuarios" aria-label="Cerrar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    </button>
+  </div>
+  <div class="dlg-body">
+    <table class="tabla">
+      <thead><tr><th>Usuario</th><th>Rol</th><th>Estado</th><th></th></tr></thead>
+      <tbody id="tabla-usuarios"></tbody>
+    </table>
+
+    <h2>Nuevo usuario</h2>
+    <form class="form-usuario" id="form-usuario" autocomplete="off">
+      <div><label for="nu-nombre">Nombre</label><input id="nu-nombre" required></div>
+      <div><label for="nu-email">Usuario (o email)</label><input id="nu-email" type="text" autocapitalize="off" spellcheck="false" required placeholder="ej: mariela"></div>
+      <div><label for="nu-password">Contraseña inicial</label><input id="nu-password" type="text" minlength="8" required autocomplete="new-password"></div>
+      <div><label for="nu-rol">Rol</label>
+        <select id="nu-rol">
+          <option value="operador">Operador (imprime y carga clientes)</option>
+          <option value="superadmin">Superadmin (además administra usuarios)</option>
+        </select>
+      </div>
+      <div class="full"><button class="btn" id="nu-crear" type="submit">Crear usuario</button></div>
+      <div class="full mensaje-error" id="usuario-error" role="alert"></div>
+    </form>
+  </div>
+</dialog>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<!-- Librería de Supabase (versión fija) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
+<!-- Configuración. Los ?v= obligan al navegador a bajar la versión nueva:
+     al cambiar cualquier CSS/JS, subir el número en TODAS las líneas. -->
+<script src="js/config.js?v=20261023.8"></script>
+<!-- Lógica (sin pantalla) -->
+<script src="js/utils.js?v=20261023.8"></script>
+<script src="js/rotulo.js?v=20261023.8"></script>
+<script src="js/api.js?v=20261023.8"></script>
+<!-- Vistas (pantalla) -->
+<script src="js/vistas/rotulos.js?v=20261023.8"></script>
+<script src="js/vistas/transportes.js?v=20261023.8"></script>
+<script src="js/vistas/clientes.js?v=20261023.8"></script>
+<script src="js/vistas/usuarios.js?v=20261023.8"></script>
+<script src="js/vistas/acceso.js?v=20261023.8"></script>
+<!-- Arranque -->
+<script src="js/main.js?v=20261023.8"></script>
+</body>
+</html>
