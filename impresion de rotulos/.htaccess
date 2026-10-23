@@ -1,0 +1,28 @@
+# 1) Forzar HTTPS
+RewriteEngine On
+RewriteCond %{HTTPS} !=on
+RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# 2) (OPCIONAL, ver GUIA-DESPLIEGUE.md paso 6) Pedir usuario y contraseña del servidor.
+#    Descomentar las 4 líneas solo si se decide usar esta capa extra.
+# AuthType Basic
+# AuthName "Rotulos Cindy"
+# AuthUserFile /RUTA/ABSOLUTA/A/.htpasswd-rotulos
+# Require valid-user
+
+# 3) No servir los archivos internos del proyecto
+#    (la carpeta .git la crea el despliegue de Ferozo y tiene el historial completo)
+RedirectMatch 404 /\.git
+RedirectMatch 404 ^/(supabase|datos-privados)(/|$)
+<FilesMatch "(\.md|\.bat|\.json|\.txt|\.gitignore|\.htpasswd.*)$">
+  Require all denied
+</FilesMatch>
+<Files "robots.txt">
+  Require all granted
+</Files>
+
+# 4) Que los buscadores no la indexen
+<IfModule mod_headers.c>
+  Header set X-Robots-Tag "noindex, nofollow"
+</IfModule>
