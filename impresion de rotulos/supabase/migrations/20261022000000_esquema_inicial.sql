@@ -1,13 +1,4 @@
--- =====================================================================
---  Generador de rótulos — esquema inicial (Supabase / Postgres)
---  Se corre una sola vez: Supabase → SQL Editor → pegar todo → Run.
---  Es idempotente en lo posible (se puede volver a correr sin romper).
--- =====================================================================
 
--- ---------------------------------------------------------------------
--- 1) Perfiles de usuario (rol y estado). El login lo maneja Supabase Auth
---    (tabla auth.users); acá solo guardamos lo propio de la app.
--- ---------------------------------------------------------------------
 create table if not exists public.perfiles (
   id         uuid primary key references auth.users(id) on delete cascade,
   email      text not null,
@@ -17,8 +8,6 @@ create table if not exists public.perfiles (
   creado_en  timestamptz not null default now()
 );
 
--- ¿El usuario logueado es superadmin activo? (security definer: puede leer
--- perfiles aunque las políticas RLS no se lo permitan al usuario)
 create or replace function public.es_superadmin()
 returns boolean
 language sql stable security definer set search_path = public
@@ -34,8 +23,6 @@ as $$
   select exists (select 1 from public.perfiles where id = auth.uid() and activo);
 $$;
 
--- Al crear un usuario en Auth se le crea su perfil (siempre como operador;
--- el rol lo asigna después un superadmin desde la app / Edge Function).
 create or replace function public.crear_perfil_nuevo_usuario()
 returns trigger
 language plpgsql security definer set search_path = public
@@ -155,13 +142,6 @@ insert into public.config (clave, valor) values
   ('remitente', '["BAG STORE S.R.L CUIT:30-71455926-1", "VILLA MARIA", "TEL:3535697189", "EMAIL: VENTASVM.CINDY@GMAIL.COM"]'::jsonb)
 on conflict (clave) do nothing;
 
--- ---------------------------------------------------------------------
--- 5) Seguridad: Row Level Security
---    - anon (sin login): no ve NADA.
---    - operador activo: lee y carga clientes/transportes.
---    - superadmin activo: además borra, edita transportes y config.
---    - Crear usuarios / cambiar roles: solo vía Edge Function (service role).
--- ---------------------------------------------------------------------
 alter table public.perfiles    enable row level security;
 alter table public.clientes    enable row level security;
 alter table public.transportes enable row level security;

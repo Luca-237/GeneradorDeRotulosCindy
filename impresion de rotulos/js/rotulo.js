@@ -1,18 +1,11 @@
-// =====================================================================
-//  El RÓTULO: dibujo en SVG idéntico al Google Sheet original.
-//  Lógica pura: recibe datos y devuelve SVG. No lee el formulario ni
-//  toca la base de datos. Ver DOCUMENTACION.md §3 antes de cambiar algo.
-// =====================================================================
+
 (function (R) {
   const { esc } = R.util;
 
-  // Geometría copiada de la planilla original (px de Google Sheets al 100%).
-  // Columnas A-O y filas 1-21 de la "Hoja 1"; las filas con texto se tomaron del alto real renderizado.
   const W = 883, H = 558, RATIO = W / H;
   const ARIAL = "Arial, Helvetica, sans-serif";
   const CALIBRI = "Calibri, Carlito, Arial, sans-serif";
 
-  // Remitente si la base todavía no tiene uno guardado (tabla config, clave "remitente")
   const REMITENTE_DEFAULT = [
     "BAG STORE S.R.L CUIT:30-71455926-1",
     "VILLA MARIA",
@@ -27,7 +20,6 @@
   }
 
   // Intensidad para impresoras térmicas (Zebra): engrosa cada letra con un trazo
-  // del mismo color alrededor. Valores en unidades del lienzo (883 = ancho total;
   // en una etiqueta de 10 cm, 1 unidad ≈ 0,11 mm y un punto de una Zebra de 203 dpi ≈ 1,1 unidades).
   const TRAZO = { normal: 0, reforzada: 1.2, maxima: 2.2 }; // el trazo va mitad afuera: reforzada ≈ +½ punto por lado, máxima ≈ +1 punto
 
