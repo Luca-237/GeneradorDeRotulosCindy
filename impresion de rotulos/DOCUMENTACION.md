@@ -37,6 +37,7 @@ Supabase
 ```
 impresion de rotulos/
 ├─ index.html                 Estructura de las pantallas. Sin estilos ni lógica.
+├─ img/travelblue-logo.png    Logo de Travel Blue (copia de vault: proyectos/adjuntos/marcas/travel-blue).
 ├─ abrir-rotulos.bat          Abre index.html en Chrome/Edge.
 ├─ css/
 │  ├─ app.css                 Estilos de la interfaz (identidad Cindy).
@@ -57,6 +58,7 @@ impresion de rotulos/
 │  ├─ migrations/20261022000000_esquema_inicial.sql   Tablas, RLS, triggers, datos base.
 │  ├─ migrations/20261022010000_ajustar_permisos.sql  Quita permisos por defecto innecesarios.
 │  ├─ migrations/20261022020000_cuentas_nuevas_desactivadas.sql  Cuentas nuevas nacen inactivas.
+│  ├─ migrations/20261026000000_rotulo_travelblue.sql  Config de Travel Blue solo para superadmin.
 │  ├─ primer-superadmin.sql   Convierte al primer usuario en superadmin.
 │  ├─ crear-superadmin-luca.sql  Crea el superadmin "Luca" en un paso (se pega la contraseña).
 │  ├─ functions/admin-usuarios/index.ts               Edge Function (Deno/TypeScript).
@@ -119,7 +121,7 @@ Conversión: **px = pt × 4/3**, así se mantienen las proporciones del Sheet.
 | `perfiles` | `id` (= usuario de Auth), `email`, `nombre`, `rol` (`superadmin`/`operador`), `activo` | cada uno el suyo; superadmin todos | solo la Edge Function |
 | `clientes` | `nombre`, `direccion`, `ciudad`, `provincia`, `cp`, `dni`, `tel`, `email`, `transporte`, `creado_por/en`, `actualizado_por/en` | usuarios activos | crear/editar: activos; borrar: superadmin |
 | `transportes` | `nombre` (único), `orden`, `activo` | usuarios activos | agregar: activos; editar/borrar: superadmin |
-| `config` | `clave`, `valor` (jsonb) | usuarios activos | superadmin |
+| `config` | `clave`, `valor` (jsonb): `remitente` (Cindy) y `remitente_travelblue` | usuarios activos; las claves que contienen `travelblue` **solo superadmin** | superadmin |
 
 Funciones y triggers:
 - `es_superadmin()` / `es_usuario_activo()`: las usan las reglas RLS.
@@ -202,9 +204,27 @@ Los errores vuelven como `{ error: "mensaje en castellano" }`.
 
 ---
 
+## 8 bis. Tipo de rótulo: Cindy Mayorista / Travel Blue (26/10/2026)
+
+- **Quién lo ve:** el selector **"Tipo de rótulo"** (sección Envío) tiene `data-solo-superadmin`. Para un operador, `disenoActual()` en `js/vistas/rotulos.js` siempre devuelve `"cindy"`, aunque alguien fuerce el selector desde la página.
+- **Seguridad en la base:** el remitente de Travel Blue está en `config` con la clave `remitente_travelblue`. La política `config_select` solo deja leer claves que contienen `travelblue` a un superadmin (migración `20261026000000_rotulo_travelblue.sql`). `main.js` solo pide esa clave si el perfil es superadmin.
+- **Diseño** (`R.rotulo.svg(..., { diseno: "travelblue" })`): misma grilla, franja, campos y cajas que el de Cindy. Cambia el bloque del remitente:
+  - 4 líneas de 16 unidades, con línea base en `410 + 19,5·i`, centradas en x = 344. Las que empiezan con "(" van sin negrita.
+  - Debajo, el logo `img/travelblue-logo.png` en `x 235, y 477, 219 × 75`.
+  - Medidas tomadas de la plantilla de Travel Blue (captura del Sheet, 26/10/2026).
+- **Remitente por defecto:** `R.rotulo.REMITENTE_TRAVELBLUE_DEFAULT`:
+  - BAG STORE S.R.L CUIT:30-71455926-1
+  - TEL: 3534 06-2150
+  - EMAIL: INFO@TRAVELBLUE.COM.AR
+  - (CON ENTREGA EN DOMICILIO)
+- **Remitente por tipo:** cada tipo guarda el suyo. "Guardar para todos" guarda el remitente del tipo elegido.
+- **Clientes y transportes:** son los mismos para los dos tipos. En la plantilla de Travel Blue el transporte aparece como "ENTREGA"; si hace falta ese texto exacto, agregarlo con "Agregar otro transporte…".
+- El tipo elegido **no se recuerda** entre sesiones: siempre arranca en Cindy, para no imprimir uno de Travel Blue por error.
+- La vista previa agrega "· Travel Blue" al título cuando corresponde.
+
 ## 9. Limitaciones y próximos pasos
 
-- **Remitente de Travel Blue** (otro remitente y el texto "CANT. DE BULTOS DE ESTE ENVIO"): pendiente, se decidió dejarlo para más adelante. Encajaría como varios remitentes en `config` y un selector.
+- **Remitente de Travel Blue:** hecho el 26/10/2026 (ver 8 bis). La variante vieja con "CANT. DE BULTOS DE ESTE ENVIO" no se implementó: la plantilla nueva dice "TOTAL DE BULTOS".
 - **Borrar clientes:** la base lo permite al superadmin, pero todavía no hay botón en la pantalla.
 - **Integración con bagsstore:** si en algún momento se prefiere la base MySQL de bagsstore en lugar de Supabase, alcanza con reescribir `js/api.js`.
 - **Hasta 500 bultos por tanda** (`max` del input `#total` y `render()`).

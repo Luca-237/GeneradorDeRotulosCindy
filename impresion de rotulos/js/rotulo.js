@@ -13,9 +13,19 @@
     "EMAIL: VENTASVM.CINDY@GMAIL.COM",
   ];
 
-  function texto(x, y, str, { size, font = ARIAL, italic = false, anchor = "start", max, transform = "" }) {
+  // Travel Blue (solo superadmin): mismo rótulo, otro remitente + logo.
+  // Las líneas que empiezan con "(" van sin negrita, como "(CON ENTREGA EN DOMICILIO)".
+  const REMITENTE_TRAVELBLUE_DEFAULT = [
+    "BAG STORE S.R.L CUIT:30-71455926-1",
+    "TEL: 3534 06-2150",
+    "EMAIL: INFO@TRAVELBLUE.COM.AR",
+    "(CON ENTREGA EN DOMICILIO)",
+  ];
+  const LOGO_TRAVELBLUE = "img/travelblue-logo.png"; // 400 x 141 px, del vault (marcas/travel-blue)
+
+  function texto(x, y, str, { size, font = ARIAL, italic = false, anchor = "start", max, transform = "", peso = 700 }) {
     const t = transform ? ` transform="${transform}"` : ` x="${x}" y="${y}"`;
-    return `<text${t} font-family="${font}" font-size="${size}" font-weight="700"` +
+    return `<text${t} font-family="${font}" font-size="${size}" font-weight="${peso}"` +
       `${italic ? ' font-style="italic"' : ""} text-anchor="${anchor}" data-max="${max}">${esc(str)}</text>`;
   }
 
@@ -29,8 +39,9 @@
   }
 
   // d: { nombre, direccion, ciudad, provincia, cp, dni, tel, email, transporte, remitente[] }
-  // opciones: { intensidad: "normal" | "reforzada" | "maxima" }
+  // opciones: { intensidad: "normal" | "reforzada" | "maxima", diseno: "cindy" | "travelblue" }
   function svg(d, n, total, opciones = {}) {
+    const travelblue = opciones.diseno === "travelblue";
     const trazo = TRAZO[opciones.intensidad] ?? 0;
     const lineas = [
       ["NOMBRE: " + d.nombre, 73, true],
@@ -57,13 +68,22 @@
     s += grupo("#000", trazo);
     s += `<text x="97" y="30" font-family="${CALIBRI}" font-size="24" data-max="776">PARA</text>`;
     for (const [str, y, it] of lineas) s += texto(97, y, str, { size: 32, italic: it, max: 776 });
-    d.remitente.forEach((l, i) => { s += texto(344, 441 + i * 28, l, { size: 24, anchor: "middle", max: 494 }); });
+    if (travelblue) {
+      // Medidas tomadas de la plantilla de Travel Blue: 4 líneas chicas arriba y el logo abajo
+      d.remitente.forEach((l, i) => {
+        s += texto(344, 410 + i * 19.5, l, { size: 16, anchor: "middle", max: 494, peso: l.startsWith("(") ? 400 : 700 });
+      });
+    } else {
+      d.remitente.forEach((l, i) => { s += texto(344, 441 + i * 28, l, { size: 24, anchor: "middle", max: 494 }); });
+    }
     s += texto(609, 416, "BULTO N°", { size: 24, font: CALIBRI, max: 120 });
     s += texto(669, 537, n, { size: 102.7, anchor: "middle", max: 120 });
     s += texto(743, 416, "TOTAL DE", { size: 24, font: CALIBRI, max: 133 });
     s += texto(743, 445, "BULTOS", { size: 24, font: CALIBRI, max: 133 });
     s += texto(809.5, 539, total, { size: 106.7, anchor: "middle", max: 133 });
-    s += `</g></svg>`;
+    s += `</g>`;
+    if (travelblue) s += `<image href="${LOGO_TRAVELBLUE}" x="235" y="477" width="219" height="75" preserveAspectRatio="xMidYMid meet"/>`;
+    s += `</svg>`;
     return s;
   }
 
@@ -127,5 +147,5 @@
     return s;
   }
 
-  R.rotulo = { W, H, RATIO, REMITENTE_DEFAULT, TRAZO, svg, svgPrueba, ajustarTextos, parseSolo };
+  R.rotulo = { W, H, RATIO, REMITENTE_DEFAULT, REMITENTE_TRAVELBLUE_DEFAULT, TRAZO, svg, svgPrueba, ajustarTextos, parseSolo };
 })(window.Rotulos);

@@ -86,13 +86,15 @@
         $("err-solo").textContent = e.message; $("err-solo").hidden = false;
         nums = [];
       }
-      const opciones = { intensidad: $("ajuste-intensidad").value };
+      const diseno = disenoActual();
+      const opciones = { intensidad: $("ajuste-intensidad").value, diseno };
       // Cada rótulo va en una "hoja" del tamaño exacto de la etiqueta; adentro se escala/mueve
       // .giro: rota el rótulo 90° solo al imprimir, si la etiqueta sale "de punta"
       $("hojas").innerHTML = nums.map(n => `<div class="hoja"><div class="giro">${R.rotulo.svg(d, n, total, opciones)}</div></div>`).join("");
       R.rotulo.ajustarTextos($("hojas"));
       const cant = nums.length;
-      $("preview-head").textContent = cant ? `Vista previa: ${cant} rótulo${cant > 1 ? "s" : ""} (${nums[0]}/${total} a ${nums[cant - 1]}/${total})` : "";
+      const tipo = diseno === "cindy" ? "" : ` · ${DISENOS[diseno].nombre}`;
+      $("preview-head").textContent = cant ? `Vista previa: ${cant} rótulo${cant > 1 ? "s" : ""} (${nums[0]}/${total} a ${nums[cant - 1]}/${total})${tipo}` : "";
       $("resumen").textContent = cant ? `Se van a imprimir ${cant} rótulo${cant > 1 ? "s" : ""} de ${$("ancho").value} × ${$("alto").value} cm.` : "";
       $("imprimir").disabled = !cant;
       document.title = d.nombre ? `Rotulos ${d.nombre}` : "Generador de rótulos";
@@ -139,17 +141,43 @@
     setAjuste(p.ajuste);
   }
 
-  // ---------- Remitente (compartido en la base; lo cambia un superadmin) ----------
-  function setRemitente(lineas) {
-    const l = Array.isArray(lineas) && lineas.length ? lineas : R.rotulo.REMITENTE_DEFAULT;
+  // ---------- Tipo de rótulo y remitente (compartidos en la base; los cambia un superadmin) ----------
+  // Travel Blue: solo superadmin. Su remitente vive en config "remitente_travelblue",
+  // que la base solo deja leer a un superadmin (migración 20261026000000).
+  const DISENOS = {
+    cindy: { clave: "remitente", defecto: R.rotulo.REMITENTE_DEFAULT, nombre: "Cindy Mayorista" },
+    travelblue: { clave: "remitente_travelblue", defecto: R.rotulo.REMITENTE_TRAVELBLUE_DEFAULT, nombre: "Travel Blue" },
+  };
+  const remitentes = { cindy: null, travelblue: null };
+
+  function disenoActual() {
+    const esSuper = R.estado && R.estado.perfil && R.estado.perfil.rol === "superadmin";
+    const v = $("tipo-rotulo").value;
+    return esSuper && DISENOS[v] ? v : "cindy";
+  }
+
+  function mostrarRemitente() {
+    const tipo = disenoActual();
+    const l = remitentes[tipo] && remitentes[tipo].length ? remitentes[tipo] : DISENOS[tipo].defecto;
     [1, 2, 3, 4].forEach(i => { $("rem" + i).value = l[i - 1] || ""; });
     render();
   }
+
+  // { cindy: [...], travelblue: [...] | null } desde la base
+  function setRemitentes(lineas) {
+    remitentes.cindy = Array.isArray(lineas.cindy) ? lineas.cindy : null;
+    remitentes.travelblue = Array.isArray(lineas.travelblue) ? lineas.travelblue : null;
+    $("tipo-rotulo").value = "cindy";
+    mostrarRemitente();
+  }
+
   async function guardarRemitente() {
+    const tipo = disenoActual();
     const lineas = [1, 2, 3, 4].map(i => up($("rem" + i).value));
     try {
-      await R.api.config.guardar("remitente", lineas);
-      toast("Remitente guardado para todos los usuarios.");
+      await R.api.config.guardar(DISENOS[tipo].clave, lineas);
+      remitentes[tipo] = lineas;
+      toast(`Remitente de ${DISENOS[tipo].nombre} guardado para todos los usuarios.`);
     } catch (e) { toast(e.message, "error"); }
   }
 
@@ -199,6 +227,7 @@
     }));
     $("imprimir").addEventListener("click", imprimir);
     $("guardar-remitente").addEventListener("click", guardarRemitente);
+    $("tipo-rotulo").addEventListener("change", mostrarRemitente);
 
     cargarPreferencias();
     if ($("preset").value !== "custom") setMedida($("preset").value);
@@ -206,5 +235,5 @@
     aplicarMedida();
   }
 
-  R.vistaRotulos = { iniciar, render, setRemitente };
+  R.vistaRotulos = { iniciar, render, setRemitentes };
 })(window.Rotulos);

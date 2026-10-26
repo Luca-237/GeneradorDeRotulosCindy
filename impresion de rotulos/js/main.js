@@ -21,13 +21,16 @@
     A.mostrarUsuario(perfil);
 
     try {
-      const [transportes, remitente] = await Promise.all([
+      const esSuper = perfil.rol === "superadmin";
+      const [transportes, remitente, remitenteTB] = await Promise.all([
         R.api.transportes.listar(),
         R.api.config.obtener("remitente"),
+        // Travel Blue: solo superadmin (la base igual se lo niega a un operador)
+        esSuper ? R.api.config.obtener("remitente_travelblue") : null,
         R.vistaClientes.recargar(),
       ]);
       R.vistaTransportes.cargar(transportes);
-      R.vistaRotulos.setRemitente(remitente);
+      R.vistaRotulos.setRemitentes({ cindy: remitente, travelblue: remitenteTB });
     } catch (e) { toast(e.message, "error", 6000); }
 
     A.mostrar("app");
