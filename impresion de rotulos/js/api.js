@@ -1,12 +1,11 @@
-// =====================================================================
-//  Capa de DATOS: única parte del front que habla con Supabase.
-//  Las vistas nunca llaman a Supabase directo; usan R.api.*.
-//  Si mañana el back cambia (ej. api.php de bagsstore), se cambia este
-//  archivo y el resto queda igual.
-// =====================================================================
+
 (function (R) {
   const CAMPOS_CLIENTE = ["nombre", "direccion", "ciudad", "provincia", "cp", "dni", "tel", "email", "transporte"];
-  let sb = null;
+  // Dos conexiones a la misma base, una por tipo de login:
+  //   sbPropio -> usuario y contraseña de rótulos (Auth de Supabase)
+  //   sbClerk  -> cuenta Cindy (token de Clerk; ahí supabase.auth no se usa)
+  let sbPropio = null, sbClerk = null, sb = null;
+  let via = null; // "clerk" | "propio" | null
 
   function configurado() {
     const c = window.ROTULOS_CONFIG || {};
@@ -18,10 +17,15 @@
       throw new Error("No se pudo cargar la librería de Supabase. Revisá la conexión a internet.");
     }
     const c = window.ROTULOS_CONFIG;
-    sb = window.supabase.createClient(c.supabaseUrl.replace(/\/+$/, ""), c.supabaseKey, {
+    const url = c.supabaseUrl.replace(/\/+$/, "");
+    sbPropio = window.supabase.createClient(url, c.supabaseKey, {
       auth: { persistSession: true, autoRefreshToken: true, storageKey: "rotulos.sesion" },
     });
+    sbClerk = window.supabase.createClient(url, c.supabaseKey, { accessToken: () => R.clerk.token() });
+    sb = sbPropio;
   }
+
+  function usar(v) { via = v; sb = v === "clerk" ? sbClerk : sbPropio; }
 
   // Errores de Supabase -> mensajes para el usuario
   function mensaje(error) {
@@ -49,17 +53,40 @@
 
   // ---------- Sesión ----------
   const auth = {
-    // usuario: "Luca" o un email completo
+    via: () => via,
+    // Login propio. usuario: "Luca" o un email completo
     async ingresar(usuario, password) {
-      chequear(await sb.auth.signInWithPassword({ email: R.util.aEmail(usuario), password }));
+      chequear(await sbPropio.auth.signInWithPassword({ email: R.util.aEmail(usuario), password }));
+      usar("propio");
     },
-    async salir() { await sb.auth.signOut(); },
-    async sesion() { const { data } = await sb.auth.getSession(); return data.session; },
-    alCambiar(cb) { sb.auth.onAuthStateChange((evento, sesion) => cb(evento, sesion)); },
+    // Cierra la sesión de esta página. La cuenta Cindy se cierra solo si se pide,
+    // porque es la misma sesión en todas las apps de bagsstore.com.ar.
+    async salir({ cuentaCindy = false } = {}) {
+      await sbPropio.auth.signOut();
+      if (cuentaCindy) await R.clerk.salir();
+      usar(null);
+    },
+    // ¿Hay sesión? Prefiere la cuenta Cindy, salvo que se pida ignorarla.
+    async sesion({ ignorarClerk = false } = {}) {
+      if (!ignorarClerk && R.clerk.conSesion()) { usar("clerk"); return true; }
+      const { data } = await sbPropio.auth.getSession();
+      if (data.session) { usar("propio"); return true; }
+      usar(null);
+      return false;
+    },
+    alCambiar(cb) { sbPropio.auth.onAuthStateChange((evento, sesion) => cb(evento, sesion)); },
+    // Perfil de esta app. Con cuenta Cindy, la primera vez la vincula (ver migración login_clerk).
     async miPerfil() {
-      const s = await auth.sesion();
-      if (!s) return null;
-      return chequear(await sb.from("perfiles").select("id, email, nombre, rol, activo").eq("id", s.user.id).maybeSingle());
+      if (!via) return null;
+      const r = await sb.rpc("mi_perfil");
+      // Base todavía sin la migración login_clerk: el login propio sigue como antes
+      if (r.error && r.error.code === "PGRST202" && via === "propio") {
+        const { data } = await sbPropio.auth.getSession();
+        const p = chequear(await sb.from("perfiles").select("id, email, nombre, rol, activo").eq("id", data.session.user.id).maybeSingle());
+        return p && { ...p, via: "propio", tiene_login_propio: true };
+      }
+      const filas = chequear(r);
+      return (filas && filas[0]) || null;
     },
   };
 
@@ -135,6 +162,8 @@
     desactivar: id => usuarios.llamar("desactivar", { id }),
     resetearPassword: (id, password) => usuarios.llamar("resetear_password", { id, password }),
     editarNombre: (id, nombre) => usuarios.llamar("editar_nombre", { id, nombre }),
+    desvincularClerk: id => usuarios.llamar("desvincular_clerk", { id }),
+    unir: (origen, destino) => usuarios.llamar("unir_cuentas", { origen, destino }),
   };
 
   R.api = { CAMPOS_CLIENTE, configurado, iniciar, auth, clientes, transportes, config, usuarios };

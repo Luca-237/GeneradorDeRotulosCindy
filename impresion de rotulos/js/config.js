@@ -5,4 +5,8 @@ window.ROTULOS_CONFIG = {
   dominioUsuarios: "rotulos.cindymayorista.com.ar",
 
   funcionUsuarios: "dynamic-processor",
+
+  // Cuenta Cindy (Clerk). Clave publicable (pk_live_... o pk_test_...), no es secreta.
+  // Vacía = solo el login propio de rótulos.
+  clerkPublishableKey: "pk_test_bmljZS1hcmFjaG5pZC04ODY0LmNsZXJrLmFjY291bnRzLmRldiQ",
 };

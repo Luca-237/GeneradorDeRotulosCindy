@@ -126,3 +126,21 @@ dialog.dlg::backdrop { background:rgba(0,0,0,.4); }
   .tabla tr { display:block; padding:8px 0; border-bottom:1px solid var(--linea); }
   .tabla td { display:block; border:0; padding:3px 0; }
 }
+
+/* ---------- Cuenta Cindy (Clerk) junto al login propio ---------- */
+.login-cindy .btn { margin-top:0; }
+.login-cindy .hint { text-align:center; }
+.separador { display:flex; align-items:center; gap:10px; margin:18px 0 4px; color:var(--muted); font-size:12px; }
+.separador::before, .separador::after { content:""; flex:1; border-top:1px solid var(--linea); }
+.con-cindy #login-btn { background:var(--blanco); color:var(--negro); border:1px solid var(--negro); font-weight:500; }
+.con-cindy #login-btn:hover:not(:disabled) { background:var(--negro); color:var(--blanco); }
+.salir-cindy { display:block; margin-top:10px; }
+.salir-cindy[hidden] { display:none; }
+.usuario-bar .via { display:inline-block; margin-left:4px; padding:1px 6px; border:1px solid var(--linea); border-radius:2px; font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+.usuario-bar .via[hidden] { display:none; }
+.tabla .chip { display:inline-block; margin:2px 4px 0 0; padding:1px 6px; border:1px solid var(--linea); border-radius:2px; font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+dialog.dlg-confirmar { width:min(420px, calc(100vw - 32px)); }
+.dlg-confirmar .dlg-body { padding:20px; }
+.dlg-confirmar p { margin:0 0 16px; font-size:14px; line-height:1.45; }
+.dlg-botones { display:flex; justify-content:flex-end; align-items:center; gap:10px; }
+.dlg-botones .btn { width:auto; margin:0; padding:10px 18px; }

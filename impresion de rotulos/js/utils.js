@@ -1,8 +1,4 @@
-// =====================================================================
-//  Utilidades compartidas (sin lógica de negocio ni de pantalla).
-//  Todos los módulos cuelgan de window.Rotulos para funcionar también
-//  abriendo index.html directo (file://), donde los módulos ES no cargan.
-// =====================================================================
+
 window.Rotulos = window.Rotulos || {};
 
 (function (R) {
@@ -50,5 +46,29 @@ window.Rotulos = window.Rotulos || {};
     usuarioNuevo: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6"/><path d="M22 11h-6"/></svg>`,
   };
 
-  R.util = { $, esc, up, norm, digitos, esNumero, aEmail, aUsuario, toast, descargarJSON, ICONOS };
+  // Confirmación dentro de la página (no usa confirm() del navegador, que algunos
+  // navegadores bloquean). Devuelve una promesa: true = Aceptar, false = Cancelar.
+  function confirmar(mensaje, { aceptar = "Aceptar", cancelar = "Cancelar" } = {}) {
+    return new Promise(listo => {
+      const d = document.createElement("dialog");
+      d.className = "dlg dlg-confirmar";
+      d.innerHTML = `<div class="dlg-body"><p></p><div class="dlg-botones">
+        <button type="button" class="btn-mini" data-r="0"></button>
+        <button type="button" class="btn" data-r="1"></button></div></div>`;
+      d.querySelector("p").textContent = mensaje;
+      d.querySelector('[data-r="0"]').textContent = cancelar;
+      d.querySelector('[data-r="1"]').textContent = aceptar;
+      let r = false;
+      d.addEventListener("click", e => {
+        const b = e.target.closest("button[data-r]");
+        if (b) { r = b.dataset.r === "1"; d.close(); }
+      });
+      d.addEventListener("close", () => { d.remove(); listo(r); }); // Esc = cancelar
+      document.body.appendChild(d);
+      d.showModal();
+      d.querySelector('[data-r="1"]').focus();
+    });
+  }
+
+  R.util = { $, esc, up, norm, digitos, esNumero, aEmail, aUsuario, toast, descargarJSON, confirmar, ICONOS };
 })(window.Rotulos);
