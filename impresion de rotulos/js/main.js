@@ -28,6 +28,7 @@
     adentro = true;
     R.estado.perfil = perfil;
     A.mostrarUsuario(perfil);
+    mostrarPestanas();
 
     try {
       const esSuper = perfil.rol === "superadmin";
@@ -44,6 +45,21 @@
 
     A.mostrar("app");
     R.vistaRotulos.render();
+  }
+
+  // Pestaña "Facturación y despacho": solo para quien tiene acceso allá (no frena la entrada a rótulos)
+  async function mostrarPestanas() {
+    const c = window.ROTULOS_CONFIG || {};
+    const local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+    const url = (local && c.facturacionUrlLocal) || c.facturacionUrl;
+    const nav = document.getElementById("pestanas-apps");
+    nav.hidden = true;
+    if (!url) return;
+    try {
+      if (!(await R.api.auth.facRol())) return;
+      document.getElementById("ir-facturacion").href = url;
+      nav.hidden = false;
+    } catch (e) { /* sin acceso o sin conexión: rótulos sigue igual */ }
   }
 
   async function entrarConCindy() {

@@ -75,6 +75,13 @@
       return false;
     },
     alCambiar(cb) { sbPropio.auth.onAuthStateChange((evento, sesion) => cb(evento, sesion)); },
+    // Rol en Facturación y despacho (misma base, tablas fac_). null si no tiene acceso
+    // o si la base todavía no tiene Facturación instalada.
+    async facRol() {
+      if (!via) return null;
+      const { data, error } = await sb.rpc("fac_rol");
+      return error ? null : data || null;
+    },
     // Perfil de esta app. Con cuenta Cindy, la primera vez la vincula (ver migración login_clerk).
     async miPerfil() {
       if (!via) return null;
