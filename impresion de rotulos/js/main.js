@@ -68,6 +68,7 @@
 
   async function arrancar() {
     R.estado = { perfil: null };
+    R.util.iniciarTema();
     if (!R.api.configurado()) return A.mostrar("pantalla-config");
 
     try { R.api.iniciar(); }
