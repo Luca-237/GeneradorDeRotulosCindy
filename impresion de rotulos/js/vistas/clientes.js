@@ -229,5 +229,6 @@
     });
   }
 
-  R.vistaClientes = { iniciar, recargar, limpiar, actualizarEstado, antesDeImprimir };
+  // buscar y lista: los usa también la pestaña Remitos (misma base de clientes)
+  R.vistaClientes = { iniciar, recargar, limpiar, actualizarEstado, antesDeImprimir, buscar, lista: () => clientes };
 })(window.Rotulos);

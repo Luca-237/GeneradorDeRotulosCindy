@@ -222,6 +222,34 @@ Los errores vuelven como `{ error: "mensaje en castellano" }`.
 - El tipo elegido **no se recuerda** entre sesiones: siempre arranca en Cindy, para no imprimir uno de Travel Blue por error.
 - La vista previa agrega "· Travel Blue" al título cuando corresponde.
 
+## 8 ter. Pestaña Remitos (25/11/2026)
+
+Reemplaza la planilla "Imprimir remito NUEVO" (Excel con una pestaña por modelo: a CBA, a clientes "X,R", a proveedores, a sucursal). Esa planilla no dibujaba el formulario: solo ponía los datos en celdas que caían sobre los renglones del talonario "R" impreso por Impregraf (A4, margen izquierdo 0, superior 1,9 cm, Calibri 11 negrita). La pestaña dibuja el remito completo en una hoja A4 en blanco, copiando ese talonario (sin sellos ni publicidades).
+
+- **Archivos:** `js/remito.js` (dibujo SVG de 210 × 297 mm, 1 unidad = 1 mm, sin pantalla), `js/vistas/remitos.js` (formulario, pestañas Rótulos | Remitos, impresión) y `css/remito.css` (pantalla e impresión). No se tocaron `css/app.css`, `css/impresion.css`, `js/rotulo.js` ni `js/vistas/rotulos.js`.
+- **Pestañas:** `index.html` separa el panel en `#seccion-rotulos` y `#seccion-remitos`; la vista previa en `#hojas` (rótulos) y `#remito-vista`. `body.vista-remitos` marca la pestaña activa, que se recuerda en el navegador (`rotulos.vista`). "Facturación y despacho" sigue apareciendo solo si `fac_rol()` devuelve un rol.
+- **Impresión:** `<style id="page-style-remito">` (va después de `#page-style`) pone `@page { size: A4 portrait; margin: 0 }` mientras la pestaña Remitos está abierta. En el cuadro de impresión: A4, márgenes Ninguno, escala 100 %.
+- **Datos:** clientes y transportes de la misma base (`R.vistaClientes.buscar/lista`, `R.vistaTransportes.lista`). Lo editado vale solo para ese remito; el botón "Guardar…" actualiza la ficha (o crea el cliente). La condición de IVA y los ingresos brutos **no están en la tabla `clientes`**: el IVA se recuerda por cliente en el navegador (`remitos.iva.v1`); con DNI sugiere Consumidor Final.
+- **Medidas:** salen de la foto del remito 0104-00001285 (hoja entera, unos 4,3 px por mm), en la constante `B` de `js/remito.js`.
+  - Márgenes: 7,8 mm a la izquierda, 8 mm a la derecha, 9 mm arriba y 8,8 mm abajo.
+  - Recuadros: encabezado 9 a 49,7 mm, cliente 51,3 a 76,8, fila de factura 78,7 a 85,8, barra de columnas 88,2 a 91,2.
+  - Cuerpo: de 92,1 mm hasta 226,8 a la izquierda y 245,9 a la derecha. Abajo a la izquierda se corta en diagonal, donde va el valor declarado.
+  - Columnas en 20,2, 154,5 y 178,6 mm.
+  - Recuadros de abajo: 248,7 a 270,8 mm. Pie de imprenta: 272,9 a 288,2.
+  - Controlado superponiendo la foto con transparencia sobre el dibujo.
+- **Cuerpo:** arriba van los bultos ("3 · BULTOS CERRADOS", opcional "( TRES )") y el detalle (`2; CARTERA 13270` = cantidad 2), desde 106,7 mm cada 5,3. El transporte y las leyendas van desde 188,2 mm, como en la foto. Si el detalle llega hasta ahí, ese bloque baja solo. Avisa si algo pasa el borde de abajo del cuerpo.
+- **Mover datos:** cada dato es un `<g data-campo="...">` con `translate(x y)` en mm (los nombres están en `R.remito.CAMPOS`).
+  - En la vista previa se arrastran con el mouse (pointer events, `getScreenCTM` para pasar de px a mm). Al elegir uno, las flechas lo mueven de a 0,5 mm (con Shift, de a 2 mm) y Esc lo suelta.
+  - Botones: "Este dato a su lugar" y "Todos los datos a su lugar".
+  - Las posiciones se guardan por computadora (`remitos.posiciones.v1`). Un superadmin puede "Guardar posiciones para todos" en `config.remito_posiciones`; esas se usan en las PCs que nunca movieron nada. No hizo falta migración: `config` ya deja leer a todos y escribir al superadmin.
+  - Los rectángulos de ayuda (`.zona`) no se imprimen.
+- **Vista previa = impresión:** es el mismo SVG. "Ajustar a la pantalla" lo achica a la columna; "Tamaño real (100 %)" lo muestra a 210 mm.
+- **Número:** `0104-00001285`. Después de imprimir pregunta si salió bien y pasa al siguiente. El número y el corrimiento se guardan **por computadora** (`remitos.prefs.v1`), no en la base: dos PCs pueden repetir número.
+- **Avisos:** número fuera del rango del C.A.I. (0104-00001151 a 1650), fecha posterior al vencimiento del C.A.I. (13/08/2027), valor declarado inválido, contenido que pasa el borde del cuerpo.
+- **Modo "Solo los datos":** imprime solo los datos en las mismas posiciones, por si se vuelve al talonario impreso. "Mover → / ↓" corre todo en mm.
+- **Datos fijos del formulario** (dirección, CUIT, imprenta, C.A.I., rango): `R.remito.FORMULARIO` en `js/remito.js`. Cuando cambie el C.A.I. o el talonario, se actualizan ahí.
+- **Probado (25/11/2026)** con una base falsa en el navegador: búsqueda y elección de cliente, edición y guardado de la ficha, avisos, modo solo datos, 375 px sin scroll horizontal. PDF con Chrome sin ventana: una sola hoja A4 igual a la foto del remito 0104-00001285. Rótulos impresos antes y después: mismo contenido. Segunda vuelta (márgenes y encabezados medidos en la foto, datos que se arrastran): arrastre, flechas, "a su lugar" y PDF de 1 hoja con un dato corrido y sin las marcas de ayuda. Versión `?v=20261125.6`.
+
 ## 9. Limitaciones y próximos pasos
 
 - **Remitente de Travel Blue:** hecho el 26/10/2026 (ver 8 bis). La variante vieja con "CANT. DE BULTOS DE ESTE ENVIO" no se implementó: la plantilla nueva dice "TOTAL DE BULTOS".

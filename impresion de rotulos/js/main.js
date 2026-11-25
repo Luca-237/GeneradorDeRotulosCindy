@@ -44,21 +44,23 @@
     } catch (e) { toast(e.message, "error", 6000); }
 
     A.mostrar("app");
-    R.vistaRotulos.render();
+    // Abre la última pestaña usada (Rótulos o Remitos) y la dibuja
+    R.vistaRemitos.restaurarVista();
   }
 
-  // Pestaña "Facturación y despacho": solo para quien tiene acceso allá (no frena la entrada a rótulos)
+  // Pestaña "Facturación y despacho": solo para quien tiene acceso allá (no frena la entrada a rótulos).
+  // Rótulos y Remitos se ven siempre.
   async function mostrarPestanas() {
     const c = window.ROTULOS_CONFIG || {};
     const local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
     const url = (local && c.facturacionUrlLocal) || c.facturacionUrl;
-    const nav = document.getElementById("pestanas-apps");
-    nav.hidden = true;
+    const fac = document.getElementById("ir-facturacion");
+    fac.hidden = true;
     if (!url) return;
     try {
       if (!(await R.api.auth.facRol())) return;
-      document.getElementById("ir-facturacion").href = url;
-      nav.hidden = false;
+      fac.href = url;
+      fac.hidden = false;
     } catch (e) { /* sin acceso o sin conexión: rótulos sigue igual */ }
   }
 
@@ -78,6 +80,7 @@
     R.vistaTransportes.iniciar();
     R.vistaClientes.iniciar();
     R.vistaUsuarios.iniciar();
+    R.vistaRemitos.iniciar();
     A.iniciar({ alIngresar: entrar, alIngresarCindy: entrarConCindy });
 
     // Cuenta Cindy: si no está configurada o no carga, sigue solo el login propio

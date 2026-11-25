@@ -11,10 +11,13 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&family=Karla:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%23e84e1b'/%3E%3Ctext x='16' y='23' text-anchor='middle' font-family='Georgia,serif' font-size='20' fill='%23fff'%3EC%3C/text%3E%3C/svg%3E">
-<link rel="stylesheet" href="css/app.css?v=20261117.2">
-<link rel="stylesheet" href="css/impresion.css?v=20261117.2">
+<link rel="stylesheet" href="css/app.css?v=20261125.6">
+<link rel="stylesheet" href="css/impresion.css?v=20261125.6">
+<link rel="stylesheet" href="css/remito.css?v=20261125.6">
 <!-- Tamaño de hoja para imprimir: lo escribe js/vistas/rotulos.js -->
 <style id="page-style"></style>
+<!-- Remito: A4 sin márgenes; lo escribe js/vistas/remitos.js (va después, así gana) -->
+<style id="page-style-remito"></style>
 </head>
 <body class="modo-etiqueta">
 
@@ -66,10 +69,11 @@
       <span class="isotipo" aria-hidden="true">C</span>
       <span><span class="titulo">Generador de rótulos</span><span class="sub">Cindy Mayorista · Envíos</span></span>
     </header>
-    <!-- Pestañas a los otros programas de Greisy (aparece si la persona tiene acceso a Facturación) -->
-    <nav class="pestanas-apps" id="pestanas-apps" aria-label="Programas" hidden>
-      <a class="activa" aria-current="page">Rótulos</a>
-      <a id="ir-facturacion" href="#">Facturación y despacho</a>
+    <!-- Pestañas: Rótulos | Remitos (en esta página) | Facturación (otro programa, solo si tiene acceso) -->
+    <nav class="pestanas-apps" id="pestanas-apps" aria-label="Programas">
+      <a href="#rotulos" data-vista="rotulos" class="activa" aria-current="page">Rótulos</a>
+      <a href="#remitos" data-vista="remitos">Remitos</a>
+      <a id="ir-facturacion" href="#" hidden>Facturación y despacho</a>
     </nav>
     <div class="usuario-bar">
       <span class="quien"><span id="usuario-nombre"></span><span class="rol" id="usuario-rol"></span><span class="via" id="usuario-via" hidden>Cuenta Cindy</span></span>
@@ -80,6 +84,7 @@
       </span>
     </div>
 
+    <div id="seccion-rotulos">
     <h2>Destinatario</h2>
     <div class="buscador">
       <label for="buscar">Cliente</label>
@@ -216,6 +221,115 @@
       </div>
       <div class="hint">La lista está en la base de datos y la comparten todos los usuarios.</div>
     </details>
+    </div><!-- /seccion-rotulos -->
+
+    <!-- ============ Remitos (hoja A4) ============ -->
+    <div id="seccion-remitos" hidden>
+      <h2>Cliente</h2>
+      <div class="buscador">
+        <label for="rm-buscar">Buscar en la lista de clientes</label>
+        <div class="buscar-wrap">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="rm-buscar" placeholder="Nombre, DNI/CUIT, teléfono o ciudad" role="combobox" aria-expanded="false" aria-controls="rm-resultados">
+        </div>
+        <ul class="resultados" id="rm-resultados" role="listbox" hidden></ul>
+      </div>
+      <div class="cliente-estado" id="rm-cliente-estado" hidden>
+        <span id="rm-cliente-estado-txt"></span>
+        <button type="button" class="link" id="rm-cambiar-cliente">Cambiar</button>
+      </div>
+      <label for="rm-nombre">Señor/es (nombre o razón social)</label>
+      <input class="upper" id="rm-nombre">
+      <label for="rm-direccion">Domicilio</label>
+      <input class="upper" id="rm-direccion">
+      <div class="row">
+        <div><label for="rm-ciudad">Localidad</label><input class="upper" id="rm-ciudad"></div>
+        <div><label for="rm-provincia">Provincia</label><input class="upper" id="rm-provincia" list="provincias"></div>
+      </div>
+      <div class="row">
+        <div><label for="rm-cp">CP</label><input class="upper" id="rm-cp" inputmode="numeric"></div>
+        <div><label for="rm-dni">CUIT / DNI</label><input class="upper" id="rm-dni"></div>
+      </div>
+      <div class="row">
+        <div><label for="rm-iva">Condición de IVA</label>
+          <select id="rm-iva">
+            <option value="">(sin completar)</option>
+            <option>Responsable Inscripto</option>
+            <option>Monotributo</option>
+            <option>Consumidor Final</option>
+            <option>Exento</option>
+          </select></div>
+        <div><label for="rm-iibb">Ingresos brutos</label><input class="upper" id="rm-iibb"></div>
+      </div>
+      <button type="button" class="btn-sec" id="rm-guardar-cliente" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></svg>
+        <span id="rm-guardar-cliente-txt">Guardar en la ficha del cliente</span>
+      </button>
+      <div class="hint">Lo que edites acá sale en este remito. La ficha del cliente cambia solo si tocás "Guardar". La condición de IVA se recuerda en esta computadora.</div>
+
+      <h2>Remito</h2>
+      <div class="row">
+        <div><label for="rm-fecha">Fecha</label><input id="rm-fecha" type="date"></div>
+        <div id="rm-numero-wrap"><label for="rm-numero">Número</label><input id="rm-numero" placeholder="0104-00001285" inputmode="numeric"></div>
+      </div>
+      <div class="row">
+        <div><label for="rm-factura">Nº de factura</label><input class="upper" id="rm-factura" placeholder="0113-00004182"></div>
+        <div><label for="rm-venta">Condición de venta</label>
+          <select id="rm-venta">
+            <option value="">(sin completar)</option>
+            <option>Contado</option>
+            <option>Cuenta Corriente</option>
+          </select></div>
+      </div>
+
+      <h2>Contenido</h2>
+      <div class="row">
+        <div><label for="rm-bultos">Bultos cerrados</label><input id="rm-bultos" type="number" min="0" max="999" step="1" value="1"></div>
+        <div><label for="rm-valor">Valor declarado ($)</label><input id="rm-valor" inputmode="decimal" placeholder="873.790,00"></div>
+      </div>
+      <label class="check"><input type="checkbox" id="rm-letras"> Cantidad también en letras: "( TRES ) BULTOS CERRADOS"</label>
+      <label for="rm-detalle">Detalle (un renglón por línea)</label>
+      <textarea class="upper" id="rm-detalle" rows="3" placeholder="Para poner cantidad: 2; CARTERA 13270"></textarea>
+      <label for="rm-transporte">Transporte</label>
+      <select id="rm-transporte"></select>
+      <label class="check"><input type="checkbox" id="rm-transporte-prefijo" checked> Escribir "TRANSPORTE" antes del nombre</label>
+      <label for="rm-leyendas">Leyendas debajo del transporte</label>
+      <textarea class="upper" id="rm-leyendas" rows="2"></textarea>
+      <div class="chips" id="rm-leyenda-rapida">
+        <button type="button" class="chip-btn" data-leyenda="ENTREGA EN DOMICILIO">+ Entrega en domicilio</button>
+        <button type="button" class="chip-btn" data-leyenda="PAGO EN DESTINO">+ Pago en destino</button>
+        <button type="button" class="chip-btn" data-leyenda="MERCADERIA PARA DEVOLUCION">+ Mercadería para devolución</button>
+      </div>
+
+      <details>
+        <summary>Recuadro de abajo (transporte y observaciones)</summary>
+        <label for="rm-emp-transp">Empresa de transporte</label><input class="upper" id="rm-emp-transp">
+        <label for="rm-cuit-transp">C.U.I.T. (o patente)</label><input class="upper" id="rm-cuit-transp">
+        <label for="rm-obs">Observaciones</label><input class="upper" id="rm-obs">
+      </details>
+
+      <details>
+        <summary>Impresión</summary>
+        <label for="rm-modo">Qué imprimir</label>
+        <select id="rm-modo">
+          <option value="completo">Remito completo (hoja A4 en blanco)</option>
+          <option value="datos">Solo los datos (encima del talonario impreso)</option>
+        </select>
+        <div class="row">
+          <div><label for="rm-x">Mover → (mm)</label><input id="rm-x" type="number" min="-20" max="20" step="0.5" value="0"></div>
+          <div><label for="rm-y">Mover ↓ (mm)</label><input id="rm-y" type="number" min="-20" max="20" step="0.5" value="0"></div>
+        </div>
+        <div class="hint">En el cuadro de impresión: papel <strong>A4</strong>, márgenes <strong>Ninguno</strong> y escala <strong>100 %</strong> (no "Ajustar"). Si la hoja sale corrida, movela acá; se guarda en esta computadora.</div>
+        <div class="acciones" style="margin-top:8px"><button type="button" class="btn-mini" id="rm-ajuste-reset">Sin corrimiento</button></div>
+      </details>
+
+      <ul class="avisos" id="rm-avisos" hidden></ul>
+      <button class="btn" id="rm-imprimir" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/></svg>
+        Imprimir remito
+      </button>
+      <button type="button" class="btn-sec" id="rm-limpiar">Remito nuevo (vaciar)</button>
+    </div><!-- /seccion-remitos -->
 
     <datalist id="provincias">
       <option value="BUENOS AIRES"><option value="CABA"><option value="CATAMARCA"><option value="CHACO"><option value="CHUBUT">
@@ -229,6 +343,22 @@
   <main class="preview">
     <p class="preview-head" id="preview-head"></p>
     <div id="hojas"></div>
+    <div id="remito-vista" hidden>
+      <div class="remito-barra">
+        <p class="preview-head" id="remito-head"></p>
+        <div class="remito-herr">
+          <select id="rm-zoom" aria-label="Tamaño de la vista previa">
+            <option value="ajustar">Ajustar a la pantalla</option>
+            <option value="real">Tamaño real (100 %)</option>
+          </select>
+          <button type="button" class="btn-mini" id="rm-pos-uno" hidden>Este dato a su lugar</button>
+          <button type="button" class="btn-mini" id="rm-pos-reset">Todos los datos a su lugar</button>
+          <button type="button" class="btn-mini" id="rm-pos-comun" data-solo-superadmin hidden>Guardar posiciones para todos</button>
+        </div>
+        <p class="hint remito-pos" id="rm-pos-estado"></p>
+      </div>
+      <div id="remito-hojas"></div>
+    </div>
   </main>
 </div>
 
@@ -269,19 +399,21 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
 <!-- Configuración. Los ?v= obligan al navegador a bajar la versión nueva:
      al cambiar cualquier CSS/JS, subir el número en TODAS las líneas. -->
-<script src="js/config.js?v=20261117.2"></script>
+<script src="js/config.js?v=20261125.6"></script>
 <!-- Lógica (sin pantalla) -->
-<script src="js/utils.js?v=20261117.2"></script>
-<script src="js/rotulo.js?v=20261117.2"></script>
-<script src="js/clerk.js?v=20261117.2"></script>
-<script src="js/api.js?v=20261117.2"></script>
+<script src="js/utils.js?v=20261125.6"></script>
+<script src="js/rotulo.js?v=20261125.6"></script>
+<script src="js/remito.js?v=20261125.6"></script>
+<script src="js/clerk.js?v=20261125.6"></script>
+<script src="js/api.js?v=20261125.6"></script>
 <!-- Vistas (pantalla) -->
-<script src="js/vistas/rotulos.js?v=20261117.2"></script>
-<script src="js/vistas/transportes.js?v=20261117.2"></script>
-<script src="js/vistas/clientes.js?v=20261117.2"></script>
-<script src="js/vistas/usuarios.js?v=20261117.2"></script>
-<script src="js/vistas/acceso.js?v=20261117.2"></script>
+<script src="js/vistas/rotulos.js?v=20261125.6"></script>
+<script src="js/vistas/transportes.js?v=20261125.6"></script>
+<script src="js/vistas/clientes.js?v=20261125.6"></script>
+<script src="js/vistas/usuarios.js?v=20261125.6"></script>
+<script src="js/vistas/remitos.js?v=20261125.6"></script>
+<script src="js/vistas/acceso.js?v=20261125.6"></script>
 <!-- Arranque -->
-<script src="js/main.js?v=20261117.2"></script>
+<script src="js/main.js?v=20261125.6"></script>
 </body>
 </html>
