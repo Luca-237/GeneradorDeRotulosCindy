@@ -224,7 +224,7 @@ Los errores vuelven como `{ error: "mensaje en castellano" }`.
 
 ## 8 ter. Pestaña Remitos (25/11/2026)
 
-Reemplaza la planilla "Imprimir remito NUEVO" (Excel con una pestaña por modelo: a CBA, a clientes "X,R", a proveedores, a sucursal). Esa planilla no dibujaba el formulario: solo ponía los datos en celdas que caían sobre los renglones del talonario "R" impreso por Impregraf (A4, margen izquierdo 0, superior 1,9 cm, Calibri 11 negrita). La pestaña dibuja el remito completo en una hoja A4 en blanco, copiando ese talonario (sin sellos ni publicidades).
+Reemplaza la planilla "Imprimir remito NUEVO" (Excel con una pestaña por modelo: a CBA, a clientes "X,R", a proveedores, a sucursal). Esa planilla no dibujaba el formulario: solo ponía los datos en celdas que caían sobre los renglones del talonario "R" impreso por Impregraf (A4, margen izquierdo 0, superior 1,9 cm, Calibri 11 negrita). **Greisy imprime sobre esas hojas preimpresas**, así que la pestaña hace lo mismo que el Excel: en papel salen **solo los datos**. En la vista previa se dibuja además el talonario en gris (sin sellos ni publicidades), como guía para editar y mover los datos; ese dibujo no se imprime (`.remito .formulario { display:none }` en `@media print`).
 
 - **Archivos:** `js/remito.js` (dibujo SVG de 210 × 297 mm, 1 unidad = 1 mm, sin pantalla), `js/vistas/remitos.js` (formulario, pestañas Rótulos | Remitos, impresión) y `css/remito.css` (pantalla e impresión). No se tocaron `css/app.css`, `css/impresion.css`, `js/rotulo.js` ni `js/vistas/rotulos.js`.
 - **Pestañas:** `index.html` separa el panel en `#seccion-rotulos` y `#seccion-remitos`; la vista previa en `#hojas` (rótulos) y `#remito-vista`. `body.vista-remitos` marca la pestaña activa, que se recuerda en el navegador (`rotulos.vista`). "Facturación y despacho" sigue apareciendo solo si `fac_rol()` devuelve un rol.
@@ -243,12 +243,12 @@ Reemplaza la planilla "Imprimir remito NUEVO" (Excel con una pestaña por modelo
   - Botones: "Este dato a su lugar" y "Todos los datos a su lugar".
   - Las posiciones se guardan por computadora (`remitos.posiciones.v1`). Un superadmin puede "Guardar posiciones para todos" en `config.remito_posiciones`; esas se usan en las PCs que nunca movieron nada. No hizo falta migración: `config` ya deja leer a todos y escribir al superadmin.
   - Los rectángulos de ayuda (`.zona`) no se imprimen.
-- **Vista previa = impresión:** es el mismo SVG. "Ajustar a la pantalla" lo achica a la columna; "Tamaño real (100 %)" lo muestra a 210 mm.
-- **Número:** `0104-00001285`. Después de imprimir pregunta si salió bien y pasa al siguiente. El número y el corrimiento se guardan **por computadora** (`remitos.prefs.v1`), no en la base: dos PCs pueden repetir número.
-- **Avisos:** número fuera del rango del C.A.I. (0104-00001151 a 1650), fecha posterior al vencimiento del C.A.I. (13/08/2027), valor declarado inválido, contenido que pasa el borde del cuerpo.
-- **Modo "Solo los datos":** imprime solo los datos en las mismas posiciones, por si se vuelve al talonario impreso. "Mover → / ↓" corre todo en mm.
+- **Vista previa:** el mismo SVG que se imprime, con el talonario en gris (opacidad .38). "Ajustar a la pantalla" lo achica a la columna; "Tamaño real (100 %)" lo muestra a 210 mm.
+- **Número de remito y C.A.I.:** vienen en la hoja preimpresa, así que la pestaña no los pide ni los controla. (Hubo una versión con número y avisos del C.A.I., para hoja en blanco; se sacó el 25/11/2026.)
+- **Avisos:** valor declarado inválido, contenido que pasa el borde del cuerpo, falta el nombre.
+- **Corregir impresora → / ↓ (mm):** si en papel todos los datos caen corridos, se corrigen acá. Se aplica **solo al imprimir** (variables `--rm-dx/--rm-dy` sobre `.remito .datos`; dentro del SVG 1px de CSS = 1 mm), así la vista previa sigue mostrando dónde cae cada dato en el talonario. Se guarda por computadora (`remitos.prefs.v1`).
 - **Datos fijos del formulario** (dirección, CUIT, imprenta, C.A.I., rango): `R.remito.FORMULARIO` en `js/remito.js`. Cuando cambie el C.A.I. o el talonario, se actualizan ahí.
-- **Probado (25/11/2026)** con una base falsa en el navegador: búsqueda y elección de cliente, edición y guardado de la ficha, avisos, modo solo datos, 375 px sin scroll horizontal. PDF con Chrome sin ventana: una sola hoja A4 igual a la foto del remito 0104-00001285. Rótulos impresos antes y después: mismo contenido. Segunda vuelta (márgenes y encabezados medidos en la foto, datos que se arrastran): arrastre, flechas, "a su lugar" y PDF de 1 hoja con un dato corrido y sin las marcas de ayuda. Versión `?v=20261125.6`.
+- **Probado (25/11/2026)** con una base falsa en el navegador: búsqueda y elección de cliente, edición y guardado de la ficha, avisos, modo solo datos, 375 px sin scroll horizontal. PDF con Chrome sin ventana: una sola hoja A4 igual a la foto del remito 0104-00001285. Rótulos impresos antes y después: mismo contenido. Segunda vuelta (márgenes y encabezados medidos en la foto, datos que se arrastran): arrastre, flechas, "a su lugar" y PDF de 1 hoja con un dato corrido y sin las marcas de ayuda. Tercera vuelta (hoja preimpresa): PDF de 1 hoja A4 con solo los datos y la corrección de impresora aplicada; en pantalla el talonario en gris y sin corrección. Versión `?v=20261125.7`.
 
 ## 9. Limitaciones y próximos pasos
 

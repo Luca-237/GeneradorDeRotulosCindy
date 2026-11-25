@@ -57,7 +57,6 @@
   function leerDatos() {
     const transporte = up($("rm-transporte").value);
     return {
-      numero: $("rm-modo").value === "completo" ? normNumero($("rm-numero").value) : "",
       fecha: $("rm-fecha").value,
       nombre: up($("rm-nombre").value), direccion: up($("rm-direccion").value),
       ciudad: up($("rm-ciudad").value), provincia: up($("rm-provincia").value),
@@ -74,32 +73,15 @@
     };
   }
 
-  // "1285" -> "0104-00001285"; "104-1285" -> "0104-00001285"
-  function normNumero(s) {
-    const pv = R.remito.FORMULARIO.imprenta.puntoVenta;
-    s = String(s || "").trim();
-    let m = /^(\d{1,5})\D+(\d{1,8})$/.exec(s);
-    if (m) return `${m[1].padStart(4, "0")}-${m[2].padStart(8, "0")}`;
-    m = /^\d{1,8}$/.exec(s);
-    return m ? `${pv}-${s.padStart(8, "0")}` : s;
-  }
   const hoyISO = () => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   };
 
-  // ---------- Avisos (número fuera del CAI, vencido, renglones de más) ----------
+  // ---------- Avisos (renglones de más, valor inválido) ----------
+  // El número y el C.A.I. vienen en la hoja preimpresa: no se controlan acá.
   function avisos(d) {
     const a = [...R.remito.revisar(d, pos)];
-    const I = R.remito.FORMULARIO.imprenta;
-    if ($("rm-modo").value === "completo") {
-      const m = /^(\d{4})-(\d{8})$/.exec(d.numero);
-      if (!d.numero) a.push("Falta el número del remito.");
-      else if (!m) a.push("El número tiene que tener la forma 0104-00001285.");
-      else if (m[1] !== I.puntoVenta || +m[2] < I.desde || +m[2] > I.hasta)
-        a.push(`El número ${d.numero} está fuera del rango del C.A.I. (${I.puntoVenta}-${String(I.desde).padStart(8, "0")} al ${String(I.hasta).padStart(8, "0")}).`);
-      if (d.fecha && d.fecha > I.vencimiento) a.push(`La fecha es posterior al vencimiento del C.A.I. (${R.remito.fechaTexto(I.vencimiento)}).`);
-    }
     if (Number.isNaN(R.remito.leerPlata(d.valor))) a.push("El valor declarado no es un número (ej: 873790 o 873.790,00).");
     if (!d.nombre) a.push("Falta el nombre del cliente.");
     return a;
@@ -112,25 +94,28 @@
     clearTimeout(timer);
     timer = setTimeout(() => {
       const d = leerDatos();
-      const completo = $("rm-modo").value === "completo";
       dibujar(d);
+      $("remito-head").textContent = "Vista previa: en gris, la hoja preimpresa (no se imprime); en negro, los datos que salen en papel.";
       const lista = avisos(d);
       $("rm-avisos").innerHTML = lista.map(m => `<li>${esc(m)}</li>`).join("");
       $("rm-avisos").hidden = !lista.length;
-      $("rm-numero-wrap").hidden = !completo;
-      $("remito-head").textContent = `Vista previa: remito ${d.numero || ""}${completo ? "" : " (solo los datos, para el talonario)"}`.replace("  ", " ");
       $("rm-imprimir").disabled = !d.nombre;
       document.title = d.nombre ? `Remito ${d.nombre}` : "Remito";
       guardarPreferencias();
     }, 100);
   }
 
-  // La hoja: lo mismo que se imprime (las zonas de arrastre no salen en papel)
+  // La hoja: en pantalla, el talonario en gris (guía, no se imprime) y los datos en negro.
+  // Al imprimir sale solo lo negro, sobre la hoja preimpresa de Greisy.
+  // "Mover → / ↓" corrige la impresora: se aplica solo al imprimir (css/remito.css),
+  // así la vista previa sigue mostrando dónde cae cada dato en el talonario.
   function dibujar(d) {
-    const completo = $("rm-modo").value === "completo";
     const cont = $("remito-hojas");
-    cont.innerHTML = `<div class="remito-hoja${completo ? "" : " solo-datos"}${$("rm-zoom").value === "real" ? " real" : ""}">` +
-      R.remito.svg(d, { completo, dx: +$("rm-x").value || 0, dy: +$("rm-y").value || 0, pos }) + `</div>`;
+    // en el SVG 1 unidad = 1 mm; en CSS, "px" dentro del SVG son unidades del dibujo
+    cont.style.setProperty("--rm-dx", (+$("rm-x").value || 0) + "px");
+    cont.style.setProperty("--rm-dy", (+$("rm-y").value || 0) + "px");
+    cont.innerHTML = `<div class="remito-hoja${$("rm-zoom").value === "real" ? " real" : ""}">` +
+      R.remito.svg(d, { completo: true, pos }) + `</div>`;
     R.remito.ajustar(cont);
     marcarZonas();
   }
@@ -290,23 +275,20 @@
   function guardarPreferencias() {
     try {
       localStorage.setItem(LS_PREFS, JSON.stringify({
-        modo: $("rm-modo").value, x: $("rm-x").value, y: $("rm-y").value, zoom: $("rm-zoom").value,
+        x: $("rm-x").value, y: $("rm-y").value, zoom: $("rm-zoom").value,
         letras: $("rm-letras").checked, prefijo: $("rm-transporte-prefijo").checked,
-        numero: normNumero($("rm-numero").value),
       }));
     } catch (e) {}
   }
   function cargarPreferencias() {
     let p = {};
     try { p = JSON.parse(localStorage.getItem(LS_PREFS)) || {}; } catch (e) {}
-    $("rm-modo").value = p.modo === "datos" ? "datos" : "completo";
     $("rm-zoom").value = p.zoom === "real" ? "real" : "ajustar";
     cargarPos();
     $("rm-x").value = p.x || 0;
     $("rm-y").value = p.y || 0;
     $("rm-letras").checked = !!p.letras;
     $("rm-transporte-prefijo").checked = p.prefijo !== false;
-    $("rm-numero").value = p.numero || "";
     $("rm-fecha").value = hoyISO();
   }
   function ivaGuardado(c) {
@@ -441,16 +423,9 @@
     if (lista.length && !(await confirmar(`Ojo: ${lista.join(" ")} ¿Imprimir igual?`, { aceptar: "Imprimir igual", cancelar: "Revisar" }))) return;
     recordarIva();
     render(); clearTimeout(timer);
-    // dibujo inmediato (sin esperar el render diferido): es exactamente la vista previa
-    const completo = $("rm-modo").value === "completo";
+    // dibujo inmediato (sin esperar el render diferido). En papel sale solo lo negro (css/remito.css)
     dibujar(d);
     window.print();
-    // Número siguiente: solo si el remito salió (no se puede saber si se canceló la impresión)
-    const m = /^(\d{4})-(\d{8})$/.exec(d.numero);
-    if (completo && m && await confirmar(`¿Salió bien el remito ${d.numero}? Si aceptás, el próximo queda como ${m[1]}-${String(+m[2] + 1).padStart(8, "0")}.`, { aceptar: "Sí, pasar al siguiente", cancelar: "No" })) {
-      $("rm-numero").value = `${m[1]}-${String(+m[2] + 1).padStart(8, "0")}`;
-      render();
-    }
   }
 
   function limpiarRemito() {
@@ -492,7 +467,6 @@
       if (CAMPOS_CLIENTE.includes(e.target.id.replace(/^rm-/, ""))) actualizarEstado();
     });
     $("seccion-remitos").addEventListener("change", e => { if (e.target.id !== "rm-buscar") render(); });
-    $("rm-numero").addEventListener("blur", e => { e.target.value = normNumero(e.target.value); render(); });
     $("rm-leyenda-rapida").addEventListener("click", e => {
       const b = e.target.closest("button[data-leyenda]");
       if (!b) return;

@@ -40,8 +40,8 @@
   .remito .zona { fill:transparent; stroke:none; }
   .remito g[data-campo]:hover .zona { fill:rgba(232,78,27,.07); stroke:#e84e1b; stroke-width:.25; stroke-dasharray:1 .7; }
   .remito g[data-campo].elegido .zona { fill:rgba(232,78,27,.12); stroke:#e84e1b; stroke-width:.35; stroke-dasharray:none; }
-  /* Solo datos: en pantalla se ve un formulario tenue de guía (no se imprime) */
-  .remito-hoja.solo-datos { background:#fff repeating-linear-gradient(0deg, transparent 0 23px, rgba(0,0,0,.035) 23px 24px); }
+  /* La hoja preimpresa se ve en gris, como guía: no se imprime */
+  .remito .formulario { opacity:.38; }
 }
 
 /* ---------- Impresión ---------- */
@@ -54,6 +54,11 @@
   body.vista-remitos .remito-barra { display:none !important; }
   /* Las marcas para mover datos no salen en papel */
   .remito .zona, .remito title { display:none !important; }
+  /* Hoja preimpresa (Greisy): en papel van SOLO los datos; el dibujo del talonario ya está impreso */
+  .remito .formulario { display:none !important; }
+  /* Corrección de la impresora ("Corregir impresora", js/vistas/remitos.js): solo al imprimir.
+     Dentro del SVG, 1px de CSS = 1 unidad del dibujo = 1 mm */
+  .remito .datos { transform:translate(var(--rm-dx, 0px), var(--rm-dy, 0px)); }
   body.vista-remitos .remito-hoja { width:210mm; height:296.5mm; overflow:hidden; background:#fff; box-shadow:none; break-after:avoid; page-break-after:avoid; }
   body.vista-remitos .remito-hoja .remito { display:block; width:210mm; height:297mm; }
   body.vista-remitos .remito-hoja, body.vista-remitos .remito-hoja * { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
