@@ -63,11 +63,9 @@
     iva: "Condición de IVA", cuit: "CUIT", iibb: "Ingresos brutos", factura: "Nº de factura", venta: "Condición de venta",
     cuerpo: "Bultos y detalle", pie: "Transporte y leyendas", valor: "Valor declarado",
     empTransp: "Empresa de transporte", cuitTransp: "C.U.I.T. del transporte", obs: "Observaciones",
-    // Córdoba
-    provincia: "Provincia", transp: "Transporte y depósito",
   };
-  // En Córdoba algunos datos se llaman distinto
-  const CAMPOS_CORDOBA = { ...CAMPOS, nombre: "Razón social", localidad: "Localidad", venta: "Forma de pago", cuerpo: "Bultos, detalle y leyendas" };
+  // Travel Blue: el CP y el teléfono van aparte; leyendas y transporte, cada uno en su lugar
+  const CAMPOS_TRAVELBLUE = { ...CAMPOS, localidad: "Localidad y provincia", cp: "CP", tel: "Teléfono", leyendas: "Leyendas", transporte: "Transporte" };
 
   // ---------- Utilidades ----------
   // Texto SVG. max (mm): si el texto mide más, se comprime (lo hace ajustar()).
@@ -171,16 +169,23 @@
   }
 
   // ---------- Formulario (lo que trae impreso el talonario) ----------
-  function formulario() {
-    const E = FORMULARIO.empresa, I = FORMULARIO.imprenta;
+  // M: { empresa, imprenta, marca } del talonario (ver MODELOS). Sin M, el de Cindy Villa María.
+  function formulario(M = {}) {
+    const E = M.empresa || FORMULARIO.empresa, I = M.imprenta || FORMULARIO.imprenta;
     const g = [], c = B.cab;
     // Encabezado
     g.push(caja(B.izq, c.y1, c.corte, c.y2), caja(c.der, c.y1, B.der, c.y2));
     g.push(`<path d="M${c.der} ${c.barra} V${c.y1 + 2} a2 2 0 0 1 2 -2 H${B.der - 2} a2 2 0 0 1 2 2 V${c.barra} Z" fill="#262626"/>`);
     g.push(t(194.7, 12.4, "REMITO", { tam: 3.9, peso: 700, anclar: "end", color: "#fff", largo: 22.3 }));
-    g.push(t(15.1, 26.2, "CINDY", { familia: F_MARCA, tam: 16.5, largo: 58 }));
-    g.push(t(18.6, 32.7, "MAYORISTA", { tam: 3.3, largo: 52 }));
-    g.push(t(28.6, 38.7, "de Bag Store S.R.L.", { tam: 3.3, estilo: "italic", largo: 35.3, ajuste: "spacingAndGlyphs" }));
+    if (M.marca === "travelblue") {
+      // Logo de Travel Blue (medido en la foto del remito 0201-00000083)
+      g.push(`<image href="${LOGO_TRAVELBLUE}" x="13.9" y="12.2" width="67.8" height="24" preserveAspectRatio="xMinYMid meet"/>`);
+      g.push(t(31.9, 39.6, "de Bag Store S.R.L.", { tam: 3.3, estilo: "italic", largo: 32, ajuste: "spacingAndGlyphs" }));
+    } else {
+      g.push(t(15.1, 26.2, "CINDY", { familia: F_MARCA, tam: 16.5, largo: 58 }));
+      g.push(t(18.6, 32.7, "MAYORISTA", { tam: 3.3, largo: 52 }));
+      g.push(t(28.6, 38.7, "de Bag Store S.R.L.", { tam: 3.3, estilo: "italic", largo: 35.3, ajuste: "spacingAndGlyphs" }));
+    }
     g.push(t(11.1, 47.1, E.iva, { tam: 2.7, largo: 36.1, ajuste: "spacingAndGlyphs" }));
     E.direccion.forEach((l, i) => g.push(t(110.3, 32 + i * 3.7, l, { tam: 2.8, anclar: "end" })));
     g.push(t(110.3, 47.1, E.email, { tam: 2.8, anclar: "end", max: 46 }));
@@ -286,110 +291,128 @@
   }
 
   // =====================================================================
-  //  Córdoba (Indarte): su propio talonario preimpreso.
-  //  Posiciones de la pestaña "REMITO R" de la planilla ENVIOS.xlsx de Córdoba
-  //  (Calibri 11 negrita; margen izq. 0 y sup. 1,9 cm; filas ocultas descontadas):
-  //  lo que hoy imprimen ellos con esa planilla. Todavía no hay foto del talonario,
-  //  así que la guía gris es aproximada (solo nombres de los datos).
+  //  Córdoba (Indarte): usa el mismo talonario "R" que Villa María (pedido de
+  //  Luca, 26/11/2026): los datos van en los mismos lugares. Solo cambian los
+  //  datos de la empresa impresos en el encabezado, como en la planilla
+  //  ENVIOS.xlsx de Córdoba (RIVERA INDARTE 280 - CORDOBA TE:3513923638).
+  //  Eso se ve solo en la guía gris: en papel salen únicamente los datos.
   // =====================================================================
-  const CBA = { der: 179.4, cant: 12.6, desc: 20.6, arriba: 106.2, alto: 5.29, limite: 174 };
+  const EMPRESA_CORDOBA = {
+    ...FORMULARIO.empresa,
+    direccion: ["Rivera Indarte 280", "Córdoba", "Tel.: 351 3923638"],
+  };
 
-  // Renglones del cuerpo: bultos, detalle y leyendas (el transporte va en el recuadro de abajo)
-  function cuerpoCordoba(d, pos) {
+  // =====================================================================
+  //  Travel Blue (solo superadmin, como el rótulo de Travel Blue). Mismo
+  //  formulario de Impregraf que el de Cindy (los textos impresos caen a menos
+  //  de 1 mm), con el logo de Travel Blue, otra imprenta/C.A.I. (punto de venta
+  //  0201) y OTRA disposición de los datos.
+  //  Posiciones medidas en la foto del remito 0201-00000083 (MOMO SHOP SRL,
+  //  20/10/2026, 7 bultos, Expreso Bolatti), pasadas a mm con los bordes de los
+  //  recuadros del talonario (unos 5,4 px por mm; se corrigió la perspectiva).
+  // =====================================================================
+  const IMPRENTA_TRAVELBLUE = {
+    ...FORMULARIO.imprenta,
+    datos: ["de Esteban Barrio", "Vélez Sársfield 56 - Loc. 60", "Tel. 4281429 - Cba."],
+    fiscal: ["C.U.I.T. Nº 20-30473402-8", "Ingresos Brutos: 270622941", "Inicio de Activ.: Sept. 2006"],
+    cai: "52051216973996",
+    vencimiento: "2027-02-03",
+    fechaImpresion: "02/2026",
+    puntoVenta: "0201",
+    desde: 1,
+    hasta: 150,
+  };
+  const LOGO_TRAVELBLUE = "img/travelblue-logo.png";
+  // Cuerpo: "7 BULTOS" (cantidad y descripción juntas, dentro de la descripción) y el detalle
+  // abajo; leyendas más abajo, a la izquierda del centro; el transporte, entre el cuerpo y el pie.
+  const TB = { x: 27.9, cuerpoY: 96.3, alto: 5.3, cant: 40.9, desc: 44.3, leyX: 60.5, leyY: 183.1, leyAlto: 4.4 };
+
+  function cuerpoTravelBlue(d, pos) {
     const lista = [];
     const bultos = Math.floor(+d.bultos || 0);
     if (bultos > 0) {
-      const txt = bultos === 1 ? "BULTO CERRADO" : "BULTOS CERRADOS";
+      const txt = bultos === 1 ? "BULTO" : "BULTOS";
       lista.push({ cant: String(bultos), desc: d.letras ? `( ${enLetras(bultos).toUpperCase()} ) ${txt}` : txt });
     }
     for (const l of d.detalle || []) {
       const m = /^\s*(\d+(?:[.,]\d+)?)\s*[;|]\s*(.*)$/.exec(l);
       lista.push(m ? { cant: m[1], desc: m[2].trim() } : { cant: "", desc: l });
     }
-    for (const l of d.leyendas || []) lista.push({ cant: "", desc: l });
-    const c = corrimiento(pos, "cuerpo");
-    const ultimo = lista.length ? CBA.arriba + c.y + (lista.length - 1) * CBA.alto : -Infinity;
-    return { lista, ultimo };
+    const c = corrimiento(pos, "cuerpo"), cL = corrimiento(pos, "leyendas");
+    const ultimo = lista.length ? TB.cuerpoY + c.y + (lista.length - 1) * TB.alto : -Infinity;
+    return { lista, ultimo, leyendas: TB.leyY + cL.y };
   }
 
-  function formularioCordoba() {
-    const g = [];
-    const guia = (x, y, txt, o = {}) => t(x, y, txt, { tam: 2.3, color: "#555", ...o });
-    g.push(`<rect x="3" y="3" width="204" height="291" rx="3" fill="none" stroke="#999" stroke-width="0.3" stroke-dasharray="2 1.5"/>`);
-    g.push(t(105, 12, "Talonario de Córdoba (Indarte): guía aproximada", { tam: 3.4, peso: 700, anclar: "middle", color: "#555" }));
-    g.push(t(105, 17, "Sin foto del talonario: los datos están donde los pone hoy la planilla ENVIOS.xlsx", { tam: 2.6, anclar: "middle", color: "#555" }));
-    g.push(guia(141.8, 34.4, "Fecha (día / mes / año)"));
-    g.push(guia(20.6, 53.4, "Razón social"), guia(CBA.der, 53.4, "Condición de IVA", { anclar: "end" }));
-    g.push(guia(20.6, 62.7, "Domicilio"), guia(CBA.der, 62.7, "CUIT", { anclar: "end" }));
-    g.push(guia(20.6, 77.2, "Localidad"), guia(65.3, 77.2, "Provincia"), guia(CBA.der, 77.2, "Ingresos brutos", { anclar: "end" }));
-    g.push(guia(119.6, 80.6, "Forma de pago", { anclar: "middle" }));
-    g.push(guia(CBA.cant, 100.6, "Cant.", { anclar: "middle" }), guia(CBA.desc, 100.6, "Descripción"));
-    g.push(`<line x1="8" y1="${CBA.limite + 2}" x2="202" y2="${CBA.limite + 2}" stroke="#999" stroke-width="0.25" stroke-dasharray="1.5 1"/>`);
-    g.push(guia(37.8, 260.4, "Transporte · C.U.I.T. · Domicilio del depósito"));
-    return g.join("");
+  function revisarTravelBlue(d, pos) {
+    const c = cuerpoTravelBlue(d, pos);
+    const a = [];
+    if ((d.leyendas || []).length && c.ultimo > c.leyendas - 4) a.push("El detalle llega a las leyendas: sacá renglones o mové las leyendas.");
+    else if (c.ultimo > B.cuerpo.yIzq - 8) a.push("El detalle llega al valor declarado: sacá renglones o subí el bloque.");
+    return a;
   }
 
-  function datosCordoba(d, pos) {
+  function datosTravelBlue(d, pos) {
     const g = [];
     const grupo = (k, contenido) => {
       if (!contenido) return;
       const c = corrimiento(pos, k);
       g.push(`<g data-campo="${k}" transform="translate(${+c.x.toFixed(2)} ${+c.y.toFixed(2)})">${contenido}</g>`);
     };
-    // Fecha: día, mes y año separados, como la planilla (Calibri 14 negrita)
-    const f = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d.fecha || "");
-    if (f) {
-      const o = { tam: 14 * PT };
-      grupo("fecha", dato(142.3, 39.8, String(+f[3]), o) + dato(150.5, 39.8, "/", o) + dato(158.2, 39.8, String(+f[2]), { ...o, anclar: "middle" }) +
-        dato(164.7, 39.8, "/", { ...o, anclar: "middle" }) + dato(167.5, 39.8, f[1], o));
-    }
-    grupo("nombre", dato(20.6, 57.8, d.nombre, { max: 84 }));
-    grupo("iva", dato(CBA.der, 57.8, d.iva, { anclar: "end", max: 70 }));
-    grupo("direccion", dato(20.6, 67.1, d.direccion, { max: 84 }));
-    grupo("cuit", dato(CBA.der, 67.1, cuitTexto(d.dni), { anclar: "end", max: 70 }));
-    grupo("localidad", dato(20.6, 73.1, d.cp ? `${d.ciudad} (CP ${d.cp})`.trim() : d.ciudad, { max: 43 }));
-    grupo("provincia", dato(65.3, 73.1, d.provincia, { max: 40 }));
-    grupo("iibb", dato(CBA.der, 73.1, d.iibb, { anclar: "end", max: 70 }));
-    if (d.factura) grupo("factura", dato(10.6, 85.1, "Factura N°:") + dato(29.9, 85.1, d.factura, { max: 66 }));
-    grupo("venta", dato(119.6, 85.1, d.venta, { anclar: "middle", max: 44 }));
-    const c = cuerpoCordoba(d, pos);
+    grupo("fecha", dato(150.5, 36.2, fechaTexto(d.fecha)));
+    // Cliente: nombre, domicilio y "LOCALIDAD, PROVINCIA." a la izquierda; CP y TEL en el medio
+    grupo("nombre", dato(TB.x, 62.5, d.nombre, { max: 55 }));
+    grupo("direccion", dato(TB.x, 67.1, d.direccion, { max: 55 }));
+    const loc = [d.ciudad, d.provincia].filter(Boolean).join(", ");
+    grupo("localidad", dato(TB.x, 71.6, loc ? loc + "." : "", { max: 116 }));
+    if (d.cp) grupo("cp", dato(85.3, 62.5, "CP:") + dato(93.4, 62.5, d.cp, { max: 50 }));
+    if (d.tel) grupo("tel", dato(85.3, 67.1, "TEL:") + dato(93.4, 67.1, d.tel, { max: 50 }));
+    grupo("iva", dato(158.4, 62.1, d.iva, { max: 41 }));
+    grupo("cuit", dato(158.4, 66.7, cuitTexto(d.dni), { max: 41 }));
+    grupo("iibb", dato(158.4, 71.2, d.iibb, { tam: 3.5, max: 41 }));
+    grupo("factura", dato(TB.x, 83.2, d.factura ? `N° DE FACTURA: ${d.factura}` : "", { max: 62 }));
+    grupo("venta", dato(110.5, 83.8, d.venta, { max: 88 }));
+    // Cuerpo
+    const c = cuerpoTravelBlue(d, pos);
     grupo("cuerpo", c.lista.map((l, i) => {
-      const y = +(CBA.arriba + i * CBA.alto).toFixed(2);
-      return dato(CBA.cant, y, l.cant, { anclar: "middle", max: 9 }) + dato(CBA.desc, y, l.desc, { max: 150 });
+      const y = +(TB.cuerpoY + i * TB.alto).toFixed(2);
+      return dato(TB.cant, y, l.cant, { anclar: "end", max: 12 }) + dato(TB.desc, y, l.desc, { max: 140 });
+    }).join(""));
+    // Leyendas: las que empiezan con "(" van finas y más chicas, como "(Con envio a domicilio)"
+    grupo("leyendas", (d.leyendas || []).map((l, i) => {
+      const y = +(TB.leyY + i * TB.leyAlto).toFixed(2);
+      return l.startsWith("(") ? t(TB.leyX, y, l, { familia: F_DATO, tam: 9 * PT, max: 120 }) : dato(TB.leyX, y, l, { max: 120 });
     }).join(""));
     const valor = leerPlata(d.valor);
     if (valor !== null && Number.isFinite(valor)) {
-      grupo("valor", dato(47.1, 196.7, "Valor declarado:", { anclar: "middle" }) + dato(65.3, 196.7, `$ ${plata(valor)}`));
+      grupo("valor", dato(27.4, 223.9, "Valor Declarado:") + dato(61.4, 223.9, "$") + dato(71.7, 223.9, plata(valor)));
     }
-    // Recuadro de abajo: transporte, C.U.I.T. y domicilio del depósito
-    const tr = [d.transporte, d.cuitTransporte, d.deposito];
-    grupo("transp", tr.map((s, i) => dato(37.8, +(265.2 + i * 5.29).toFixed(2), s, { max: 120 })).join(""));
+    // Transporte: solo el nombre, entre el cuerpo y el recuadro de abajo
+    grupo("transporte", dato(43.6, 247.8, d.transporteNombre, { max: 85 }));
+    // Recuadro de abajo (vacío en la foto): mismos lugares que en el de Cindy
+    grupo("empTransp", dato(35.5, 258, d.empresaTransporte, { tam: 3.4, max: 92 }));
+    grupo("cuitTransp", dato(20, 262.2, d.cuitTransporte, { tam: 3.4, max: 108 }));
+    grupo("obs", dato(30.5, 266.6, d.observaciones, { tam: 3.4, max: 98 }));
     return g.join("");
   }
 
-  // Talonario de cada sucursal (js/sucursales.js -> remito)
+  // Talonarios: el de cada sucursal (js/sucursales.js -> remito) y el de Travel Blue
   const MODELOS = {
-    villamaria: { formulario, datos, campos: CAMPOS },
-    cordoba: { formulario: formularioCordoba, datos: datosCordoba, campos: CAMPOS_CORDOBA },
+    villamaria: { empresa: FORMULARIO.empresa, datos, revisar, campos: CAMPOS },
+    cordoba: { empresa: EMPRESA_CORDOBA, datos, revisar, campos: CAMPOS },
+    travelblue: { empresa: FORMULARIO.empresa, imprenta: IMPRENTA_TRAVELBLUE, marca: "travelblue", datos: datosTravelBlue, revisar: revisarTravelBlue, campos: CAMPOS_TRAVELBLUE },
   };
   const modelo = m => MODELOS[m] || MODELOS.villamaria;
   const campos = m => modelo(m).campos;
-
-  // Avisos sobre el dibujo, según el talonario
-  function revisarModelo(d, pos, m) {
-    if (m !== "cordoba") return revisar(d, pos);
-    const c = cuerpoCordoba(d, pos);
-    return c.ultimo > CBA.limite ? ["El detalle y las leyendas llegan al valor declarado: sacá renglones o subí el bloque."] : [];
-  }
+  const revisarModelo = (d, pos, m) => modelo(m).revisar(d, pos);
 
   // Hoja entera. o.completo: con el formulario; o.dx/o.dy: corrimiento de toda la hoja (mm);
-  // o.pos: corrimiento de cada dato { campo: {x, y} } (mm); o.modelo: talonario ("villamaria" | "cordoba").
+  // o.pos: corrimiento de cada dato { campo: {x, y} } (mm); o.modelo: "villamaria" | "cordoba" | "travelblue".
   function svg(d, o = {}) {
     const M = modelo(o.modelo);
     const mover = o.dx || o.dy ? ` transform="translate(${+o.dx || 0} ${+o.dy || 0})"` : "";
     return `<svg class="remito" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 210 297" width="210mm" height="297mm" role="img" aria-label="Remito">` +
       `<rect width="210" height="297" fill="#fff"/>` +
-      `<g${mover}>${o.completo !== false ? `<g class="formulario">${M.formulario()}</g>` : ""}<g class="datos">${M.datos(d, o.pos || {})}</g></g></svg>`;
+      `<g${mover}>${o.completo !== false ? `<g class="formulario">${formulario(M)}</g>` : ""}<g class="datos">${M.datos(d, o.pos || {})}</g></g></svg>`;
   }
 
   // Comprime los textos que no entran en su lugar (data-max, en mm). La hoja tiene que estar en pantalla.

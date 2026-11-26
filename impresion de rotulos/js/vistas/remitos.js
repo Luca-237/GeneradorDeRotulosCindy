@@ -12,11 +12,17 @@
   // Cada sucursal tiene su talonario (js/sucursales.js): "villamaria" o "cordoba", y sus posiciones:
   //  - por PC: dónde quedó cada dato después de arrastrarlo (remitos.posiciones.v1, ...cordoba.v1)
   //  - para todos: config de la base, la guarda un superadmin (remito_posiciones, ..._cordoba)
-  const modeloActual = () => R.sucursal.config().remito;
-  const lsPos = () => R.sucursal.config().posLocal;
-  const clavePos = () => R.sucursal.config().posiciones;
+  // Travel Blue (solo superadmin, selector "Tipo de remito"): su talonario y sus posiciones, aparte.
+  // La base solo deja leer las claves de config con "travelblue" a un superadmin.
+  const TRAVELBLUE = { remito: "travelblue", posLocal: "remitos.posiciones.travelblue.v1", posiciones: "remito_posiciones_travelblue" };
+  const esSuper = () => !!(R.estado && R.estado.perfil && R.estado.perfil.rol === "superadmin");
+  const esTravelBlue = () => esSuper() && $("rm-tipo").value === "travelblue";
+  const cfg = () => (esTravelBlue() ? TRAVELBLUE : R.sucursal.config());
+  const modeloActual = () => cfg().remito;
+  const lsPos = () => cfg().posLocal;
+  const clavePos = () => cfg().posiciones;
   const nombreCampo = k => R.remito.campos(modeloActual())[k] || "";
-  const CAMPOS_CLIENTE = ["nombre", "direccion", "ciudad", "provincia", "cp", "dni"];
+  const CAMPOS_CLIENTE = ["nombre", "direccion", "ciudad", "provincia", "cp", "dni", "tel"];
   const SIN_TRANSPORTE = "";
   const SVGNS = "http://www.w3.org/2000/svg";
 
@@ -65,7 +71,8 @@
       fecha: $("rm-fecha").value,
       nombre: up($("rm-nombre").value), direccion: up($("rm-direccion").value),
       ciudad: up($("rm-ciudad").value), provincia: up($("rm-provincia").value),
-      cp: up($("rm-cp").value), dni: up($("rm-dni").value),
+      cp: up($("rm-cp").value), dni: up($("rm-dni").value), tel: up($("rm-tel").value),
+      transporteNombre: transporte, // Travel Blue: solo el nombre
       iva: $("rm-iva").value, iibb: up($("rm-iibb").value),
       factura: up($("rm-factura").value), venta: $("rm-venta").value,
       bultos: +$("rm-bultos").value || 0, letras: $("rm-letras").checked,
@@ -75,22 +82,15 @@
       valor: $("rm-valor").value,
       empresaTransporte: up($("rm-emp-transp").value), cuitTransporte: up($("rm-cuit-transp").value),
       observaciones: up($("rm-obs").value),
-      deposito: up($("rm-deposito").value),
     };
   }
-  // Córdoba: el transporte va solo, en el recuadro de abajo (sin "TRANSPORTE" adelante)
-  function leerDatosModelo() {
-    const d = leerDatos();
-    if (modeloActual() === "cordoba") d.transporte = up($("rm-transporte").value);
-    return d;
-  }
 
-  // Lo que cambia con la sucursal: campos del formulario, nombres y posiciones de los datos
+  // Lo que cambia con la sucursal o el tipo de remito: el talonario, los campos y las posiciones
+  // guardadas (Córdoba usa el mismo talonario que Villa María, en otra impresora)
   function aplicarModelo() {
-    const m = modeloActual();
-    document.querySelectorAll("#seccion-remitos [data-modelo]").forEach(el => { el.hidden = el.dataset.modelo !== m; });
-    $("rm-venta-label").textContent = m === "cordoba" ? "Forma de pago" : "Condición de venta";
-    $("rm-leyendas-label").textContent = m === "cordoba" ? "Leyendas (debajo del detalle)" : "Leyendas debajo del transporte";
+    const tb = esTravelBlue();
+    $("rm-tel-wrap").hidden = !tb;          // Travel Blue lleva el teléfono del cliente
+    $("rm-prefijo-wrap").hidden = tb;       // y el transporte solo con su nombre
     elegido = null;
     cargarPos();
     posComun = null;
@@ -118,10 +118,12 @@
     if (vista !== "remitos") return;
     clearTimeout(timer);
     timer = setTimeout(() => {
-      const d = leerDatosModelo();
+      const d = leerDatos();
       dibujar(d);
-      $("remito-head").textContent = modeloActual() === "cordoba"
-        ? `Vista previa · ${R.sucursal.nombre()}: en gris, una guía aproximada del talonario (no se imprime); en negro, los datos que salen en papel.`
+      $("remito-head").textContent = modeloActual() === "travelblue"
+        ? "Vista previa · Travel Blue: en gris, el talonario de Travel Blue (no se imprime); en negro, los datos que salen en papel."
+        : modeloActual() === "cordoba"
+        ? `Vista previa · ${R.sucursal.nombre()}: en gris, la hoja preimpresa con los datos de Córdoba (no se imprime); en negro, los datos que salen en papel.`
         : "Vista previa: en gris, la hoja preimpresa (no se imprime); en negro, los datos que salen en papel.";
       const lista = avisos(d);
       $("rm-avisos").innerHTML = lista.map(m => `<li>${esc(m)}</li>`).join("");
@@ -446,7 +448,7 @@
 
   // ---------- Imprimir ----------
   async function imprimir() {
-    const d = leerDatosModelo();
+    const d = leerDatos();
     if (!d.nombre) return $("rm-nombre").focus();
     const lista = avisos(d);
     if (lista.length && !(await confirmar(`Ojo: ${lista.join(" ")} ¿Imprimir igual?`, { aceptar: "Imprimir igual", cancelar: "Revisar" }))) return;
@@ -460,7 +462,7 @@
   function limpiarRemito() {
     actual = null;
     ["rm-nombre", "rm-direccion", "rm-ciudad", "rm-provincia", "rm-cp", "rm-dni", "rm-iibb", "rm-factura",
-      "rm-detalle", "rm-leyendas", "rm-valor", "rm-emp-transp", "rm-cuit-transp", "rm-obs", "rm-deposito"].forEach(id => { $(id).value = ""; });
+      "rm-detalle", "rm-leyendas", "rm-valor", "rm-emp-transp", "rm-cuit-transp", "rm-obs", "rm-tel"].forEach(id => { $(id).value = ""; });
     $("rm-iva").value = ""; $("rm-venta").value = "";
     $("rm-bultos").value = 1; $("rm-fecha").value = hoyISO();
     armarTransportes("");
@@ -512,7 +514,8 @@
     $("rm-pos-uno").addEventListener("click", () => { if (elegido) fijarPos(elegido, 0, 0); });
     iniciarArrastre();
     cargarPreferencias();
-    R.sucursal.alCambiar(aplicarModelo);
+    R.sucursal.alCambiar(() => { $("rm-tipo").value = "cindy"; aplicarModelo(); });
+    $("rm-tipo").addEventListener("change", aplicarModelo);
   }
 
   R.vistaRemitos = { iniciar, render, restaurarVista, mostrarVista };

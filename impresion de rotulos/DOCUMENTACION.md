@@ -272,17 +272,48 @@ Cada usuario pertenece a una sucursal y la página usa el rótulo, el remitente 
   - En Córdoba se ocultan "Medida", el ajuste de la Zebra y el tipo Travel Blue. Aparece "Hoja", con "Corregir impresora" (`a4-x/a4-y`): se aplica solo al imprimir y se guarda por PC.
   - Impresión: `@page A4, margen 0`, con `body.modo-a4doble` (`css/sucursales.css`).
 - **Remito de Córdoba** (`js/remito.js`, modelo `cordoba`):
-  - Datos en las posiciones de la pestaña REMITO R (Calibri 11 negrita, margen izquierdo 0 y superior 1,9 cm, filas ocultas descontadas).
-  - Arriba: fecha en día / mes / año (14 pt), razón social, IVA, domicilio, CUIT, localidad, provincia, ingresos brutos, "Factura N°" y forma de pago.
-  - Cuerpo: bultos, detalle y leyendas desde 106,2 mm, cada 5,29 mm. Valor declarado en 196,7 mm.
-  - Recuadro de abajo, en 265,2 / 270,5 / 275,8 mm: transporte, C.U.I.T. y domicilio del depósito (`rm-deposito`, campo solo de Córdoba).
-  - Los campos que no son de ese talonario se ocultan con `data-modelo`. Posiciones por PC en `remitos.posiciones.cordoba.v1`.
-  - **No hay foto del talonario de Córdoba:** la guía gris es aproximada y solo muestra el nombre de cada dato. Con una foto se puede dibujar como el de Villa María.
+  - Usa el **mismo talonario "R" que Villa María** (confirmado por Luca el 26/11/2026). Los datos van en los mismos lugares y con el mismo formulario.
+  - Solo cambia el encabezado de la empresa en la guía gris (`EMPRESA_CORDOBA`): "Rivera Indarte 280 / Córdoba / Tel.: 351 3923638", como en la planilla de Córdoba. En papel no sale, porque viene preimpreso.
+  - Las posiciones se guardan aparte por sucursal, porque es otra impresora: por PC en `remitos.posiciones.cordoba.v1` y para todos en `config.remito_posiciones_cordoba`.
+  - Una primera versión con las posiciones de la pestaña REMITO R de la planilla se descartó el mismo día.
 - **Probado (26/11/2026):**
   - Base falsa en el navegador: entrada como Córdoba; cambio de sucursal del superadmin (rótulo, remitente, pestañas y campos del remito); "Guardar para todos" en `remitente` y `remitente_cordoba`; selector de sucursal en Usuarios; 375 px sin scroll horizontal.
   - PDF con Chrome sin ventana: rótulo de Córdoba con 3 bultos, 2 hojas A4 (2 + 1 rótulos); remito de Córdoba en 1 hoja con solo los datos; rótulo de Central sin cambios (3 etiquetas de 10 × 6,5).
   - Migración probada en PGlite: corre dos veces, Córdoba-only queda en Córdoba, `asignar_sucursal` rechaza a un operador y una sucursal inexistente.
-  - Versión `?v=20261126.1`.
+  - Remito de Córdoba sobre el talonario de Villa María: PDF de 1 hoja con los datos en los mismos lugares; en pantalla, encabezado con Rivera Indarte 280.
+  - Versión `?v=20261126.2`.
+
+## 8 quinquies. Remito Travel Blue (26/11/2026)
+
+- **Quién lo ve:** selector "Tipo de remito" (Cindy Mayorista / Travel Blue) arriba de la pestaña Remitos, `data-solo-superadmin`. Es igual que el rótulo de Travel Blue: no se recuerda y siempre arranca en Cindy. También vuelve a Cindy al cambiar de sucursal.
+- **Talonario:** es el mismo formulario de Impregraf que el de Cindy. En la foto, los textos impresos ("Fecha:", "Señor/es:", "Cond. de venta:") caen a menos de 1 mm.
+  - Cambia el encabezado: logo `img/travelblue-logo.png` y "de Bag Store S.R.L.".
+  - Cambia la imprenta (`IMPRENTA_TRAVELBLUE`): Esteban Barrio, C.A.I. 52051216973996 con vencimiento 03/02/2027, punto de venta 0201, del 1 al 150, impreso en 02/2026.
+  - Todo eso es solo la guía gris; en papel salen los datos.
+- **Posiciones por defecto** (`datosTravelBlue`, `TB` en `js/remito.js`): medidas en la foto del remito 0201-00000083 (MOMO SHOP SRL, 20/10/2026). La foto tiene unos 5,4 px por mm; se pasó a mm usando los bordes de los recuadros como referencia, lo que corrige la perspectiva.
+
+  | Dato | Posición |
+  |---|---|
+  | Fecha | 150,5 / 36,2 |
+  | Nombre / domicilio / "LOCALIDAD, PROVINCIA." | x 27,9; y 62,5 / 67,1 / 71,6 |
+  | "CP:" y "TEL:" | x 85,3, valor en 93,4; y 62,5 / 67,1 |
+  | IVA / CUIT | x 158,4; y 62,1 / 66,7, alineados a la izquierda |
+  | "N° DE FACTURA: …" | 27,9 / 83,2 |
+  | Cuerpo | cantidad hasta 40,9 y "BULTOS" en 44,3, desde y 96,3, cada 5,3 |
+  | Leyendas | x 60,5 desde y 183,1, cada 4,4 |
+  | Valor declarado | "Valor Declarado:" 27,4, "$" 61,4, importe 71,7, y 223,9 |
+  | Transporte (solo el nombre) | 43,6 / 247,8, entre el cuerpo y el pie |
+
+  - Las leyendas que empiezan con "(" salen finas y más chicas, como "(Con envio a domicilio)".
+  - Recuadro de abajo: los mismos lugares que en el de Cindy.
+- **Campos:** con Travel Blue aparece **Teléfono** (`rm-tel`, sale de la ficha y se guarda con "Guardar") y se oculta "Escribir TRANSPORTE". Se agregaron dos leyendas rápidas: "(Con envío a domicilio)" y "Pago en origen".
+- **Mover datos:** igual que en los otros remitos.
+  - Por PC: `remitos.posiciones.travelblue.v1`.
+  - Para todos: `config.remito_posiciones_travelblue`, que la base solo deja leer a un superadmin porque la clave contiene "travelblue".
+- **Probado (26/11/2026):**
+  - En el navegador: elegir cliente (trae el teléfono), mover un dato con las flechas (se guarda aparte del de Cindy), volver a Cindy (sin logo ni teléfono).
+  - PDF con Chrome sin ventana: 1 hoja A4 con solo los datos, en la disposición de la foto.
+  - Versión `?v=20261126.3`.
 
 ## 9. Limitaciones y próximos pasos
 

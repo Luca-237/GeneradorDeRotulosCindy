@@ -11,10 +11,10 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&family=Karla:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%23e84e1b'/%3E%3Ctext x='16' y='23' text-anchor='middle' font-family='Georgia,serif' font-size='20' fill='%23fff'%3EC%3C/text%3E%3C/svg%3E">
-<link rel="stylesheet" href="css/app.css?v=20261126.1">
-<link rel="stylesheet" href="css/impresion.css?v=20261126.1">
-<link rel="stylesheet" href="css/remito.css?v=20261126.1">
-<link rel="stylesheet" href="css/sucursales.css?v=20261126.1">
+<link rel="stylesheet" href="css/app.css?v=20261126.3">
+<link rel="stylesheet" href="css/impresion.css?v=20261126.3">
+<link rel="stylesheet" href="css/remito.css?v=20261126.3">
+<link rel="stylesheet" href="css/sucursales.css?v=20261126.3">
 <!-- Tamaño de hoja para imprimir: lo escribe js/vistas/rotulos.js -->
 <style id="page-style"></style>
 <!-- Remito: A4 sin márgenes; lo escribe js/vistas/remitos.js (va después, así gana) -->
@@ -253,6 +253,14 @@
 
     <!-- ============ Remitos (hoja A4) ============ -->
     <div id="seccion-remitos" hidden>
+      <!-- Tipo de remito (solo superadmin, como el rótulo de Travel Blue). No se recuerda: arranca en Cindy -->
+      <div id="rm-tipo-wrap" data-solo-superadmin hidden>
+        <label for="rm-tipo">Tipo de remito</label>
+        <select id="rm-tipo">
+          <option value="cindy" selected>Cindy Mayorista</option>
+          <option value="travelblue">Travel Blue</option>
+        </select>
+      </div>
       <h2>Cliente</h2>
       <div class="buscador">
         <label for="rm-buscar">Buscar en la lista de clientes</label>
@@ -278,6 +286,9 @@
         <div><label for="rm-cp">CP</label><input class="upper" id="rm-cp" inputmode="numeric"></div>
         <div><label for="rm-dni">CUIT / DNI</label><input class="upper" id="rm-dni"></div>
       </div>
+      <div id="rm-tel-wrap" hidden>
+        <label for="rm-tel">Teléfono</label><input class="upper" id="rm-tel" inputmode="tel">
+      </div>
       <div class="row">
         <div><label for="rm-iva">Condición de IVA</label>
           <select id="rm-iva">
@@ -301,7 +312,7 @@
         <div><label for="rm-factura">Nº de factura</label><input class="upper" id="rm-factura" placeholder="0113-00004182"></div>
       </div>
       <div class="row">
-        <div><label for="rm-venta" id="rm-venta-label">Condición de venta</label>
+        <div><label for="rm-venta">Condición de venta</label>
           <select id="rm-venta">
             <option value="">(sin completar)</option>
             <option>Contado</option>
@@ -319,22 +330,22 @@
       <textarea class="upper" id="rm-detalle" rows="3" placeholder="Para poner cantidad: 2; CARTERA 13270"></textarea>
       <label for="rm-transporte">Transporte</label>
       <select id="rm-transporte"></select>
-      <label class="check" data-modelo="villamaria"><input type="checkbox" id="rm-transporte-prefijo" checked> Escribir "TRANSPORTE" antes del nombre</label>
-      <div class="hint" data-modelo="cordoba" hidden>En este remito el transporte va en el recuadro de abajo.</div>
-      <label for="rm-leyendas" id="rm-leyendas-label">Leyendas debajo del transporte</label>
+      <label class="check" id="rm-prefijo-wrap"><input type="checkbox" id="rm-transporte-prefijo" checked> Escribir "TRANSPORTE" antes del nombre</label>
+      <label for="rm-leyendas">Leyendas debajo del transporte</label>
       <textarea class="upper" id="rm-leyendas" rows="2"></textarea>
       <div class="chips" id="rm-leyenda-rapida">
         <button type="button" class="chip-btn" data-leyenda="ENTREGA EN DOMICILIO">+ Entrega en domicilio</button>
         <button type="button" class="chip-btn" data-leyenda="PAGO EN DESTINO">+ Pago en destino</button>
         <button type="button" class="chip-btn" data-leyenda="MERCADERIA PARA DEVOLUCION">+ Mercadería para devolución</button>
+        <button type="button" class="chip-btn" data-leyenda="(CON ENVIO A DOMICILIO)">+ (Con envío a domicilio)</button>
+        <button type="button" class="chip-btn" data-leyenda="PAGO EN ORIGEN">+ Pago en origen</button>
       </div>
 
       <details>
         <summary>Recuadro de abajo (transporte y observaciones)</summary>
-        <div data-modelo="villamaria"><label for="rm-emp-transp">Empresa de transporte</label><input class="upper" id="rm-emp-transp"></div>
+        <label for="rm-emp-transp">Empresa de transporte</label><input class="upper" id="rm-emp-transp">
         <label for="rm-cuit-transp">C.U.I.T. (o patente)</label><input class="upper" id="rm-cuit-transp">
-        <div data-modelo="villamaria"><label for="rm-obs">Observaciones</label><input class="upper" id="rm-obs"></div>
-        <div data-modelo="cordoba" hidden><label for="rm-deposito">Domicilio del depósito del transporte</label><input class="upper" id="rm-deposito"></div>
+        <label for="rm-obs">Observaciones</label><input class="upper" id="rm-obs">
       </details>
 
       <details>
@@ -424,23 +435,23 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
 <!-- Configuración. Los ?v= obligan al navegador a bajar la versión nueva:
      al cambiar cualquier CSS/JS, subir el número en TODAS las líneas. -->
-<script src="js/config.js?v=20261126.1"></script>
+<script src="js/config.js?v=20261126.3"></script>
 <!-- Lógica (sin pantalla) -->
-<script src="js/utils.js?v=20261126.1"></script>
-<script src="js/rotulo.js?v=20261126.1"></script>
-<script src="js/rotulo-a4.js?v=20261126.1"></script>
-<script src="js/remito.js?v=20261126.1"></script>
-<script src="js/clerk.js?v=20261126.1"></script>
-<script src="js/api.js?v=20261126.1"></script>
-<script src="js/sucursales.js?v=20261126.1"></script>
+<script src="js/utils.js?v=20261126.3"></script>
+<script src="js/rotulo.js?v=20261126.3"></script>
+<script src="js/rotulo-a4.js?v=20261126.3"></script>
+<script src="js/remito.js?v=20261126.3"></script>
+<script src="js/clerk.js?v=20261126.3"></script>
+<script src="js/api.js?v=20261126.3"></script>
+<script src="js/sucursales.js?v=20261126.3"></script>
 <!-- Vistas (pantalla) -->
-<script src="js/vistas/rotulos.js?v=20261126.1"></script>
-<script src="js/vistas/transportes.js?v=20261126.1"></script>
-<script src="js/vistas/clientes.js?v=20261126.1"></script>
-<script src="js/vistas/usuarios.js?v=20261126.1"></script>
-<script src="js/vistas/remitos.js?v=20261126.1"></script>
-<script src="js/vistas/acceso.js?v=20261126.1"></script>
+<script src="js/vistas/rotulos.js?v=20261126.3"></script>
+<script src="js/vistas/transportes.js?v=20261126.3"></script>
+<script src="js/vistas/clientes.js?v=20261126.3"></script>
+<script src="js/vistas/usuarios.js?v=20261126.3"></script>
+<script src="js/vistas/remitos.js?v=20261126.3"></script>
+<script src="js/vistas/acceso.js?v=20261126.3"></script>
 <!-- Arranque -->
-<script src="js/main.js?v=20261126.1"></script>
+<script src="js/main.js?v=20261126.3"></script>
 </body>
 </html>
