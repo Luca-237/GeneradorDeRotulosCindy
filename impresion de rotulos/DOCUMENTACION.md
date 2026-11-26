@@ -250,6 +250,40 @@ Reemplaza la planilla "Imprimir remito NUEVO" (Excel con una pestaña por modelo
 - **Datos fijos del formulario** (dirección, CUIT, imprenta, C.A.I., rango): `R.remito.FORMULARIO` en `js/remito.js`. Cuando cambie el C.A.I. o el talonario, se actualizan ahí.
 - **Probado (25/11/2026)** con una base falsa en el navegador: búsqueda y elección de cliente, edición y guardado de la ficha, avisos, modo solo datos, 375 px sin scroll horizontal. PDF con Chrome sin ventana: una sola hoja A4 igual a la foto del remito 0104-00001285. Rótulos impresos antes y después: mismo contenido. Segunda vuelta (márgenes y encabezados medidos en la foto, datos que se arrastran): arrastre, flechas, "a su lugar" y PDF de 1 hoja con un dato corrido y sin las marcas de ayuda. Tercera vuelta (hoja preimpresa): PDF de 1 hoja A4 con solo los datos y la corrección de impresora aplicada; en pantalla el talonario en gris y sin corrección. Versión `?v=20261125.7`.
 
+## 8 quater. Sucursales: Córdoba (Indarte) con su rótulo y su remito (26/11/2026)
+
+Cada usuario pertenece a una sucursal y la página usa el rótulo, el remitente y el remito de esa sucursal. Córdoba reemplaza su planilla `ENVIOS.xlsx` (pestaña DATOS + ROTULO + REMITO R; impresora láser Samsung M2020, hoja A4).
+
+- **Base** (migración `20261126200000_sucursal_rotulos.sql`, va después de las de Facturación):
+  - `perfiles.sucursal` (`central` por defecto). La primera vez copia lo tildado en Facturación: quien tiene **solo** Córdoba queda en Córdoba.
+  - `sucursales_rotulos()`: clave y nombre de las sucursales activas (`fac_sucursales`), para cualquier usuario activo.
+  - `mi_sucursal()`: la del usuario logueado.
+  - `asignar_sucursal(perfil, sucursal)`: solo superadmin; rechaza sucursales que no existen.
+  - Lo propio de cada sucursal va en `config`: `remitente` / `remitente_cordoba` y `remito_posiciones` / `remito_posiciones_cordoba`. Sin tabla nueva.
+  - **Sin la migración** la página funciona igual que antes: todos quedan en Casa Central.
+- **Front:**
+  - `js/sucursales.js`: `R.sucursal`, con la tabla `CONFIG` por sucursal: tipo de rótulo (`zebra` o `a4doble`), remito (`villamaria` o `cordoba`) y claves de config. Una sucursal que no esté en `CONFIG` usa lo de Central.
+  - Barra "Sucursal" debajo del usuario. El operador ve la suya, fija. El superadmin tiene un selector para imprimir como otra sucursal; no se recuerda, siempre arranca en la suya.
+  - **Usuarios:** debajo del rol hay un selector de sucursal por persona.
+- **Rótulo A4 de Córdoba** (`js/rotulo-a4.js`; no toca `js/rotulo.js`):
+  - 2 rótulos iguales por hoja A4 (uno por bulto) con línea de corte, copia de la pestaña ROTULO.
+  - Medidas en mm sacadas de los anchos de columna y altos de fila, con sus márgenes: izquierda 6,35 mm y arriba 19 mm.
+  - Contenido: franja oscura con el transporte en vertical; PARA con nombre, dirección, localidad (más el CP si lo tiene), provincia, CUIT/DNI y teléfono; DE con el remitente; **ORDEN**, un campo nuevo que solo aparece en Córdoba; **CANT. DE BULTOS DE ESTE ENVÍO**.
+  - En Córdoba se ocultan "Medida", el ajuste de la Zebra y el tipo Travel Blue. Aparece "Hoja", con "Corregir impresora" (`a4-x/a4-y`): se aplica solo al imprimir y se guarda por PC.
+  - Impresión: `@page A4, margen 0`, con `body.modo-a4doble` (`css/sucursales.css`).
+- **Remito de Córdoba** (`js/remito.js`, modelo `cordoba`):
+  - Datos en las posiciones de la pestaña REMITO R (Calibri 11 negrita, margen izquierdo 0 y superior 1,9 cm, filas ocultas descontadas).
+  - Arriba: fecha en día / mes / año (14 pt), razón social, IVA, domicilio, CUIT, localidad, provincia, ingresos brutos, "Factura N°" y forma de pago.
+  - Cuerpo: bultos, detalle y leyendas desde 106,2 mm, cada 5,29 mm. Valor declarado en 196,7 mm.
+  - Recuadro de abajo, en 265,2 / 270,5 / 275,8 mm: transporte, C.U.I.T. y domicilio del depósito (`rm-deposito`, campo solo de Córdoba).
+  - Los campos que no son de ese talonario se ocultan con `data-modelo`. Posiciones por PC en `remitos.posiciones.cordoba.v1`.
+  - **No hay foto del talonario de Córdoba:** la guía gris es aproximada y solo muestra el nombre de cada dato. Con una foto se puede dibujar como el de Villa María.
+- **Probado (26/11/2026):**
+  - Base falsa en el navegador: entrada como Córdoba; cambio de sucursal del superadmin (rótulo, remitente, pestañas y campos del remito); "Guardar para todos" en `remitente` y `remitente_cordoba`; selector de sucursal en Usuarios; 375 px sin scroll horizontal.
+  - PDF con Chrome sin ventana: rótulo de Córdoba con 3 bultos, 2 hojas A4 (2 + 1 rótulos); remito de Córdoba en 1 hoja con solo los datos; rótulo de Central sin cambios (3 etiquetas de 10 × 6,5).
+  - Migración probada en PGlite: corre dos veces, Córdoba-only queda en Córdoba, `asignar_sucursal` rechaza a un operador y una sucursal inexistente.
+  - Versión `?v=20261126.1`.
+
 ## 9. Limitaciones y próximos pasos
 
 - **Remitente de Travel Blue:** hecho el 26/10/2026 (ver 8 bis). La variante vieja con "CANT. DE BULTOS DE ESTE ENVIO" no se implementó: la plantilla nueva dice "TOTAL DE BULTOS".

@@ -147,6 +147,27 @@
     },
   };
 
+  // ---------- Sucursales (migración 20261126200000_sucursal_rotulos.sql) ----------
+  // Si la base todavía no tiene la migración, todo sigue como Casa Central.
+  const sucursales = {
+    async listar() {
+      const { data, error } = await sb.rpc("sucursales_rotulos");
+      return error ? [] : data || [];
+    },
+    async mia() {
+      const { data, error } = await sb.rpc("mi_sucursal");
+      return error ? null : data || null;
+    },
+    // { perfil_id: sucursal } de todos los usuarios (solo superadmin: lo deja la regla de perfiles)
+    async deUsuarios() {
+      const { data, error } = await sb.from("perfiles").select("id, sucursal");
+      return error ? {} : Object.fromEntries((data || []).map(f => [f.id, f.sucursal]));
+    },
+    async asignar(perfilId, sucursal) {
+      chequear(await sb.rpc("asignar_sucursal", { p_perfil: perfilId, p_sucursal: sucursal }));
+    },
+  };
+
   // ---------- Usuarios (Edge Function, solo superadmin) ----------
   const usuarios = {
     async llamar(accion, datos = {}) {
@@ -173,5 +194,5 @@
     unir: (origen, destino) => usuarios.llamar("unir_cuentas", { origen, destino }),
   };
 
-  R.api = { CAMPOS_CLIENTE, configurado, iniciar, auth, clientes, transportes, config, usuarios };
+  R.api = { CAMPOS_CLIENTE, configurado, iniciar, auth, clientes, transportes, config, sucursales, usuarios };
 })(window.Rotulos);

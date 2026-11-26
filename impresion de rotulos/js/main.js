@@ -30,18 +30,26 @@
     A.mostrarUsuario(perfil);
     mostrarPestanas();
 
+    // Sucursal del usuario (decide rótulo, remitente y remito). Sin conexión o sin la migración: Central
+    try { await R.sucursal.cargar(); } catch (e) { /* queda Casa Central */ }
+
+    const remitentes = {};
     try {
       const esSuper = perfil.rol === "superadmin";
-      const [transportes, remitente, remitenteTB] = await Promise.all([
+      // Remitente de cada sucursal (config "remitente", "remitente_cordoba"...)
+      const claves = [...new Set(Object.values(R.sucursal.CONFIG).map(c => c.remitente))];
+      const [transportes, remitenteTB, ...porSucursal] = await Promise.all([
         R.api.transportes.listar(),
-        R.api.config.obtener("remitente"),
         // Travel Blue: solo superadmin (la base igual se lo niega a un operador)
         esSuper ? R.api.config.obtener("remitente_travelblue") : null,
+        ...claves.map(k => R.api.config.obtener(k)),
         R.vistaClientes.recargar(),
       ]);
       R.vistaTransportes.cargar(transportes);
-      R.vistaRotulos.setRemitentes({ cindy: remitente, travelblue: remitenteTB });
+      claves.forEach((k, i) => { remitentes[k] = porSucursal[i]; });
+      remitentes.remitente_travelblue = remitenteTB;
     } catch (e) { toast(e.message, "error", 6000); }
+    R.vistaRotulos.setRemitentes(remitentes);
 
     A.mostrar("app");
     // Abre la última pestaña usada (Rótulos o Remitos) y la dibuja
@@ -76,6 +84,7 @@
     try { R.api.iniciar(); }
     catch (e) { A.mostrar("pantalla-login"); return A.errorLogin(e.message); }
 
+    R.sucursal.iniciar();
     R.vistaRotulos.iniciar();
     R.vistaTransportes.iniciar();
     R.vistaClientes.iniciar();

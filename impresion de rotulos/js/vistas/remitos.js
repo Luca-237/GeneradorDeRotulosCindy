@@ -9,8 +9,13 @@
   const LS_PREFS = "remitos.prefs.v1";   // modo, corrimiento, letras, próximo número
   const LS_IVA = "remitos.iva.v1";       // condición de IVA usada con cada cliente (por PC)
   const LS_VISTA = "rotulos.vista";      // última pestaña abierta
-  const LS_POS = "remitos.posiciones.v1"; // dónde quedó cada dato después de arrastrarlo (por PC)
-  const CLAVE_POS = "remito_posiciones";  // posiciones para todos (config de la base, la guarda un superadmin)
+  // Cada sucursal tiene su talonario (js/sucursales.js): "villamaria" o "cordoba", y sus posiciones:
+  //  - por PC: dónde quedó cada dato después de arrastrarlo (remitos.posiciones.v1, ...cordoba.v1)
+  //  - para todos: config de la base, la guarda un superadmin (remito_posiciones, ..._cordoba)
+  const modeloActual = () => R.sucursal.config().remito;
+  const lsPos = () => R.sucursal.config().posLocal;
+  const clavePos = () => R.sucursal.config().posiciones;
+  const nombreCampo = k => R.remito.campos(modeloActual())[k] || "";
   const CAMPOS_CLIENTE = ["nombre", "direccion", "ciudad", "provincia", "cp", "dni"];
   const SIN_TRANSPORTE = "";
   const SVGNS = "http://www.w3.org/2000/svg";
@@ -20,7 +25,7 @@
   let vista = "rotulos";
   let pos = {};            // { campo: {x, y} } en mm
   let posComun = null;     // las guardadas para todos (null = las del talonario)
-  let posComunCargada = false;
+  let posComunCargada = null; // clave de config de las ya pedidas a la base
   let elegido = null;      // campo elegido en la hoja (se mueve con las flechas)
   let arrastre = null;
 
@@ -70,7 +75,27 @@
       valor: $("rm-valor").value,
       empresaTransporte: up($("rm-emp-transp").value), cuitTransporte: up($("rm-cuit-transp").value),
       observaciones: up($("rm-obs").value),
+      deposito: up($("rm-deposito").value),
     };
+  }
+  // Córdoba: el transporte va solo, en el recuadro de abajo (sin "TRANSPORTE" adelante)
+  function leerDatosModelo() {
+    const d = leerDatos();
+    if (modeloActual() === "cordoba") d.transporte = up($("rm-transporte").value);
+    return d;
+  }
+
+  // Lo que cambia con la sucursal: campos del formulario, nombres y posiciones de los datos
+  function aplicarModelo() {
+    const m = modeloActual();
+    document.querySelectorAll("#seccion-remitos [data-modelo]").forEach(el => { el.hidden = el.dataset.modelo !== m; });
+    $("rm-venta-label").textContent = m === "cordoba" ? "Forma de pago" : "Condición de venta";
+    $("rm-leyendas-label").textContent = m === "cordoba" ? "Leyendas (debajo del detalle)" : "Leyendas debajo del transporte";
+    elegido = null;
+    cargarPos();
+    posComun = null;
+    posComunCargada = null;
+    if (vista === "remitos") { render(); cargarPosComun(); }
   }
 
   const hoyISO = () => {
@@ -81,7 +106,7 @@
   // ---------- Avisos (renglones de más, valor inválido) ----------
   // El número y el C.A.I. vienen en la hoja preimpresa: no se controlan acá.
   function avisos(d) {
-    const a = [...R.remito.revisar(d, pos)];
+    const a = [...R.remito.revisar(d, pos, modeloActual())];
     if (Number.isNaN(R.remito.leerPlata(d.valor))) a.push("El valor declarado no es un número (ej: 873790 o 873.790,00).");
     if (!d.nombre) a.push("Falta el nombre del cliente.");
     return a;
@@ -93,9 +118,11 @@
     if (vista !== "remitos") return;
     clearTimeout(timer);
     timer = setTimeout(() => {
-      const d = leerDatos();
+      const d = leerDatosModelo();
       dibujar(d);
-      $("remito-head").textContent = "Vista previa: en gris, la hoja preimpresa (no se imprime); en negro, los datos que salen en papel.";
+      $("remito-head").textContent = modeloActual() === "cordoba"
+        ? `Vista previa · ${R.sucursal.nombre()}: en gris, una guía aproximada del talonario (no se imprime); en negro, los datos que salen en papel.`
+        : "Vista previa: en gris, la hoja preimpresa (no se imprime); en negro, los datos que salen en papel.";
       const lista = avisos(d);
       $("rm-avisos").innerHTML = lista.map(m => `<li>${esc(m)}</li>`).join("");
       $("rm-avisos").hidden = !lista.length;
@@ -115,7 +142,7 @@
     cont.style.setProperty("--rm-dx", (+$("rm-x").value || 0) + "px");
     cont.style.setProperty("--rm-dy", (+$("rm-y").value || 0) + "px");
     cont.innerHTML = `<div class="remito-hoja${$("rm-zoom").value === "real" ? " real" : ""}">` +
-      R.remito.svg(d, { completo: true, pos }) + `</div>`;
+      R.remito.svg(d, { completo: true, pos, modelo: modeloActual() }) + `</div>`;
     R.remito.ajustar(cont);
     marcarZonas();
   }
@@ -134,7 +161,7 @@
       r.setAttribute("rx", "0.8");
       g.insertBefore(r, g.firstChild);
       const t = document.createElementNS(SVGNS, "title");
-      t.textContent = `${R.remito.CAMPOS[g.dataset.campo] || ""}: arrastrá para moverlo`;
+      t.textContent = `${nombreCampo(g.dataset.campo)}: arrastrá para moverlo`;
       g.insertBefore(t, g.firstChild);
       g.classList.toggle("elegido", g.dataset.campo === elegido);
     });
@@ -163,7 +190,7 @@
       return;
     }
     const p = pos[elegido] || { x: 0, y: 0 };
-    $("rm-pos-estado").textContent = `${R.remito.CAMPOS[elegido]}: ${describir(p.x, p.y)}. Flechas: 0,5 mm (Shift: 2 mm). Esc: soltar.`;
+    $("rm-pos-estado").textContent = `${nombreCampo(elegido)}: ${describir(p.x, p.y)}. Flechas: 0,5 mm (Shift: 2 mm). Esc: soltar.`;
   }
 
   function elegirCampo(campo) {
@@ -180,24 +207,26 @@
   }
 
   function guardarPos() {
-    try { localStorage.setItem(LS_POS, JSON.stringify(pos)); } catch (e) {}
+    try { localStorage.setItem(lsPos(), JSON.stringify(pos)); } catch (e) {}
   }
 
   function cargarPos() {
     let p = null;
-    try { p = JSON.parse(localStorage.getItem(LS_POS)); } catch (e) {}
+    try { p = JSON.parse(localStorage.getItem(lsPos())); } catch (e) {}
     pos = p && typeof p === "object" ? p : {};
   }
 
   // Posiciones guardadas para todos: se usan si en esta PC nunca se movió nada
   async function cargarPosComun() {
-    if (posComunCargada) return;
-    posComunCargada = true;
+    const clave = clavePos();
+    if (posComunCargada === clave) return;
+    posComunCargada = clave;
     try {
-      const v = await R.api.config.obtener(CLAVE_POS);
+      const v = await R.api.config.obtener(clave);
+      if (clave !== clavePos()) return; // se cambió de sucursal mientras tanto
       posComun = v && typeof v === "object" && !Array.isArray(v) ? v : null;
       let local = null;
-      try { local = localStorage.getItem(LS_POS); } catch (e) {}
+      try { local = localStorage.getItem(lsPos()); } catch (e) {}
       if (posComun && !local) { pos = JSON.parse(JSON.stringify(posComun)); render(); }
     } catch (e) { /* sin conexión: quedan las de esta PC */ }
   }
@@ -206,7 +235,7 @@
     const destino = posComun ? "a las posiciones guardadas para todos" : "a su lugar del talonario";
     if (!(await confirmar(`¿Volver todos los datos ${destino}? Se pierden los cambios hechos en esta computadora.`, { aceptar: "Volver" }))) return;
     pos = posComun ? JSON.parse(JSON.stringify(posComun)) : {};
-    try { localStorage.removeItem(LS_POS); } catch (e) {}
+    try { localStorage.removeItem(lsPos()); } catch (e) {}
     elegido = null;
     render();
   }
@@ -214,7 +243,7 @@
   async function guardarPosComun() {
     if (!(await confirmar("¿Guardar estas posiciones para todos? Las computadoras que nunca movieron un dato van a usar estas.", { aceptar: "Guardar para todos" }))) return;
     try {
-      await R.api.config.guardar(CLAVE_POS, pos);
+      await R.api.config.guardar(clavePos(), pos);
       posComun = JSON.parse(JSON.stringify(pos));
       toast("Posiciones guardadas para todos los usuarios.");
     } catch (e) { toast(e.message, "error"); }
@@ -239,7 +268,7 @@
       arrastre.dy = (e.clientY - arrastre.y0) / arrastre.escala;
       arrastre.g.setAttribute("transform", `translate(${(arrastre.base.x + arrastre.dx).toFixed(2)} ${(arrastre.base.y + arrastre.dy).toFixed(2)})`);
       const actualPos = pos[arrastre.campo] || { x: 0, y: 0 };
-      $("rm-pos-estado").textContent = `${R.remito.CAMPOS[arrastre.campo]}: ${describir(actualPos.x + arrastre.dx, actualPos.y + arrastre.dy)}.`;
+      $("rm-pos-estado").textContent = `${nombreCampo(arrastre.campo)}: ${describir(actualPos.x + arrastre.dx, actualPos.y + arrastre.dy)}.`;
     });
     const soltar = () => {
       if (!arrastre) return;
@@ -417,7 +446,7 @@
 
   // ---------- Imprimir ----------
   async function imprimir() {
-    const d = leerDatos();
+    const d = leerDatosModelo();
     if (!d.nombre) return $("rm-nombre").focus();
     const lista = avisos(d);
     if (lista.length && !(await confirmar(`Ojo: ${lista.join(" ")} ¿Imprimir igual?`, { aceptar: "Imprimir igual", cancelar: "Revisar" }))) return;
@@ -431,7 +460,7 @@
   function limpiarRemito() {
     actual = null;
     ["rm-nombre", "rm-direccion", "rm-ciudad", "rm-provincia", "rm-cp", "rm-dni", "rm-iibb", "rm-factura",
-      "rm-detalle", "rm-leyendas", "rm-valor", "rm-emp-transp", "rm-cuit-transp", "rm-obs"].forEach(id => { $(id).value = ""; });
+      "rm-detalle", "rm-leyendas", "rm-valor", "rm-emp-transp", "rm-cuit-transp", "rm-obs", "rm-deposito"].forEach(id => { $(id).value = ""; });
     $("rm-iva").value = ""; $("rm-venta").value = "";
     $("rm-bultos").value = 1; $("rm-fecha").value = hoyISO();
     armarTransportes("");
@@ -483,6 +512,7 @@
     $("rm-pos-uno").addEventListener("click", () => { if (elegido) fijarPos(elegido, 0, 0); });
     iniciarArrastre();
     cargarPreferencias();
+    R.sucursal.alCambiar(aplicarModelo);
   }
 
   R.vistaRemitos = { iniciar, render, restaurarVista, mostrarVista };

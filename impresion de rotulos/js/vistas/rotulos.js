@@ -11,15 +11,30 @@
       nombre: up($("nombre").value), direccion: up($("direccion").value), ciudad: up($("ciudad").value),
       provincia: up($("provincia").value), cp: up($("cp").value), dni: up($("dni").value),
       tel: up($("tel").value), email: up($("email").value), transporte: up($("transporte").value),
+      orden: up($("orden").value),
       remitente: [1, 2, 3, 4].map(i => up($("rem" + i).value)).filter(Boolean),
     };
   }
 
   // ---------- Medida y papel ----------
+  // Rótulo de la sucursal: "zebra" (etiqueta, con medida y papel) o "a4doble" (2 por hoja A4, Córdoba)
+  const a4doble = () => R.sucursal.config().rotulo === "a4doble";
+
   function aplicarMedida() {
     const ancho = +$("ancho").value, alto = +$("alto").value, papel = $("papel").value;
-    document.body.classList.toggle("modo-etiqueta", papel === "etiqueta");
-    document.body.classList.toggle("modo-a4", papel !== "etiqueta");
+    const doble = a4doble();
+    document.body.classList.toggle("modo-a4doble", doble);
+    document.body.classList.toggle("modo-etiqueta", !doble && papel === "etiqueta");
+    document.body.classList.toggle("modo-a4", !doble && papel !== "etiqueta");
+    if (doble) {
+      // Hoja A4 sin márgenes del navegador (los de la planilla ya están en el dibujo).
+      // Corrección de la impresora: solo al imprimir (css/sucursales.css; en el SVG 1px = 1 mm)
+      const css = document.documentElement.style;
+      css.setProperty("--a4dx", (+$("a4-x").value || 0) + "px");
+      css.setProperty("--a4dy", (+$("a4-y").value || 0) + "px");
+      $("page-style").textContent = "@page { size: A4 portrait; margin: 0; }";
+      return;
+    }
     const css = document.documentElement.style;
     css.setProperty("--w", ancho + "cm");
     css.setProperty("--h", alto + "cm");
@@ -86,6 +101,7 @@
         $("err-solo").textContent = e.message; $("err-solo").hidden = false;
         nums = [];
       }
+      if (a4doble()) return renderA4(d, nums, total);
       const diseno = disenoActual();
       const opciones = { intensidad: $("ajuste-intensidad").value, diseno };
       // Cada rótulo va en una "hoja" del tamaño exacto de la etiqueta; adentro se escala/mueve
@@ -93,13 +109,27 @@
       $("hojas").innerHTML = nums.map(n => `<div class="hoja"><div class="giro">${R.rotulo.svg(d, n, total, opciones)}</div></div>`).join("");
       R.rotulo.ajustarTextos($("hojas"));
       const cant = nums.length;
-      const tipo = diseno === "cindy" ? "" : ` · ${DISENOS[diseno].nombre}`;
+      const tipo = diseno === "cindy" ? "" : ` · ${TRAVELBLUE.nombre}`;
       $("preview-head").textContent = cant ? `Vista previa: ${cant} rótulo${cant > 1 ? "s" : ""} (${nums[0]}/${total} a ${nums[cant - 1]}/${total})${tipo}` : "";
       $("resumen").textContent = cant ? `Se van a imprimir ${cant} rótulo${cant > 1 ? "s" : ""} de ${$("ancho").value} × ${$("alto").value} cm.` : "";
       $("imprimir").disabled = !cant;
       document.title = d.nombre ? `Rotulos ${d.nombre}` : "Generador de rótulos";
       guardarPreferencias();
     }, 120);
+  }
+
+  // Córdoba: hojas A4 con 2 rótulos iguales cada una (uno por bulto, como la planilla ENVIOS.xlsx)
+  function renderA4(d, nums, total) {
+    const cant = nums.length;
+    const hojas = cant ? R.rotuloA4.hojas(d, total, cant) : [];
+    $("hojas").innerHTML = hojas.map(s => `<div class="hoja-a4">${s}</div>`).join("");
+    R.rotulo.ajustarTextos($("hojas"));
+    const h = hojas.length;
+    $("preview-head").textContent = cant ? `Vista previa: ${cant} rótulo${cant > 1 ? "s" : ""} en ${h} hoja${h > 1 ? "s" : ""} A4 · ${R.sucursal.nombre()}` : "";
+    $("resumen").textContent = cant ? `Se ${h > 1 ? "van" : "va"} a imprimir ${h} hoja${h > 1 ? "s" : ""} A4 (2 rótulos por hoja).` : "";
+    $("imprimir").disabled = !cant;
+    document.title = d.nombre ? `Rotulos ${d.nombre}` : "Generador de rótulos";
+    guardarPreferencias();
   }
 
   // ---------- Preferencias locales (medida / papel / calibración de la impresora) ----------
@@ -117,6 +147,7 @@
       localStorage.setItem(LS_PREFS, JSON.stringify({
         ancho: $("ancho").value, alto: $("alto").value, preset: $("preset").value, papel: $("papel").value,
         ajuste: { escala: $("ajuste-escala").value, x: $("ajuste-x").value, y: $("ajuste-y").value, intensidad: $("ajuste-intensidad").value, giro: $("ajuste-giro").value, cm: $("ajuste-cm").value, v: AJUSTE_DEFAULT.v },
+        a4: { x: $("a4-x").value, y: $("a4-y").value },
       }));
     } catch (e) {}
   }
@@ -139,46 +170,66 @@
     if (p.alto) $("alto").value = p.alto;
     if (p.papel) $("papel").value = p.papel;
     setAjuste(p.ajuste);
+    $("a4-x").value = (p.a4 && p.a4.x) || 0;
+    $("a4-y").value = (p.a4 && p.a4.y) || 0;
   }
 
   // ---------- Tipo de rótulo y remitente (compartidos en la base; los cambia un superadmin) ----------
-  // Travel Blue: solo superadmin. Su remitente vive en config "remitente_travelblue",
-  // que la base solo deja leer a un superadmin (migración 20261026000000).
-  const DISENOS = {
-    cindy: { clave: "remitente", defecto: R.rotulo.REMITENTE_DEFAULT, nombre: "Cindy Mayorista" },
-    travelblue: { clave: "remitente_travelblue", defecto: R.rotulo.REMITENTE_TRAVELBLUE_DEFAULT, nombre: "Travel Blue" },
-  };
-  const remitentes = { cindy: null, travelblue: null };
+  // Travel Blue: solo superadmin y solo en el rótulo de la Zebra. Su remitente vive en config
+  // "remitente_travelblue", que la base solo deja leer a un superadmin (migración 20261026000000).
+  // El de Cindy es uno por sucursal: config "remitente" (Central), "remitente_cordoba" (js/sucursales.js).
+  const TRAVELBLUE = { clave: "remitente_travelblue", defecto: R.rotulo.REMITENTE_TRAVELBLUE_DEFAULT, nombre: "Travel Blue" };
+  const remitentes = {}; // clave de config -> líneas guardadas en la base
+
+  const esSuper = () => !!(R.estado && R.estado.perfil && R.estado.perfil.rol === "superadmin");
 
   function disenoActual() {
-    const esSuper = R.estado && R.estado.perfil && R.estado.perfil.rol === "superadmin";
-    const v = $("tipo-rotulo").value;
-    return esSuper && DISENOS[v] ? v : "cindy";
+    return esSuper() && !a4doble() && $("tipo-rotulo").value === "travelblue" ? "travelblue" : "cindy";
+  }
+
+  // Clave de config, remitente por defecto y nombre del remitente que se está usando
+  function remitenteActual() {
+    if (disenoActual() === "travelblue") return TRAVELBLUE;
+    return {
+      clave: R.sucursal.config().remitente,
+      defecto: a4doble() ? R.rotuloA4.REMITENTE_CORDOBA_DEFAULT : R.rotulo.REMITENTE_DEFAULT,
+      nombre: `Cindy Mayorista (${R.sucursal.nombre()})`,
+    };
   }
 
   function mostrarRemitente() {
-    const tipo = disenoActual();
-    const l = remitentes[tipo] && remitentes[tipo].length ? remitentes[tipo] : DISENOS[tipo].defecto;
+    const r = remitenteActual();
+    const l = remitentes[r.clave] && remitentes[r.clave].length ? remitentes[r.clave] : r.defecto;
     [1, 2, 3, 4].forEach(i => { $("rem" + i).value = l[i - 1] || ""; });
     render();
   }
 
-  // { cindy: [...], travelblue: [...] | null } desde la base
+  // { clave de config: [...] | null } desde la base
   function setRemitentes(lineas) {
-    remitentes.cindy = Array.isArray(lineas.cindy) ? lineas.cindy : null;
-    remitentes.travelblue = Array.isArray(lineas.travelblue) ? lineas.travelblue : null;
+    Object.entries(lineas || {}).forEach(([k, v]) => { remitentes[k] = Array.isArray(v) ? v : null; });
     $("tipo-rotulo").value = "cindy";
-    mostrarRemitente();
+    aplicarSucursal();
   }
 
   async function guardarRemitente() {
-    const tipo = disenoActual();
+    const r = remitenteActual();
     const lineas = [1, 2, 3, 4].map(i => up($("rem" + i).value));
     try {
-      await R.api.config.guardar(DISENOS[tipo].clave, lineas);
-      remitentes[tipo] = lineas;
-      toast(`Remitente de ${DISENOS[tipo].nombre} guardado para todos los usuarios.`);
+      await R.api.config.guardar(r.clave, lineas);
+      remitentes[r.clave] = lineas;
+      toast(`Remitente de ${r.nombre} guardado para todos los usuarios.`);
     } catch (e) { toast(e.message, "error"); }
+  }
+
+  // Lo que cambia con la sucursal: qué partes del panel se ven, la hoja y el remitente
+  function aplicarSucursal() {
+    const doble = a4doble();
+    $("rotulo-medida").hidden = doble;
+    $("rotulo-a4").hidden = !doble;
+    $("orden-wrap").hidden = !doble;
+    $("tipo-rotulo-wrap").hidden = !esSuper() || doble;
+    aplicarMedida();
+    mostrarRemitente();
   }
 
   // Hoja de prueba: una sola página, del tamaño exacto que se manda a la impresora
@@ -228,6 +279,9 @@
     $("imprimir").addEventListener("click", imprimir);
     $("guardar-remitente").addEventListener("click", guardarRemitente);
     $("tipo-rotulo").addEventListener("change", mostrarRemitente);
+    ["a4-x", "a4-y"].forEach(id => $(id).addEventListener("input", () => { aplicarMedida(); render(); }));
+    $("a4-reset").addEventListener("click", () => { $("a4-x").value = 0; $("a4-y").value = 0; aplicarMedida(); render(); });
+    R.sucursal.alCambiar(() => { $("tipo-rotulo").value = "cindy"; aplicarSucursal(); });
 
     cargarPreferencias();
     if ($("preset").value !== "custom") setMedida($("preset").value);
@@ -235,5 +289,5 @@
     aplicarMedida();
   }
 
-  R.vistaRotulos = { iniciar, render, setRemitentes };
+  R.vistaRotulos = { iniciar, render, setRemitentes, aplicarSucursal };
 })(window.Rotulos);

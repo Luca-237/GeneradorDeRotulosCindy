@@ -63,7 +63,11 @@
     iva: "Condición de IVA", cuit: "CUIT", iibb: "Ingresos brutos", factura: "Nº de factura", venta: "Condición de venta",
     cuerpo: "Bultos y detalle", pie: "Transporte y leyendas", valor: "Valor declarado",
     empTransp: "Empresa de transporte", cuitTransp: "C.U.I.T. del transporte", obs: "Observaciones",
+    // Córdoba
+    provincia: "Provincia", transp: "Transporte y depósito",
   };
+  // En Córdoba algunos datos se llaman distinto
+  const CAMPOS_CORDOBA = { ...CAMPOS, nombre: "Razón social", localidad: "Localidad", venta: "Forma de pago", cuerpo: "Bultos, detalle y leyendas" };
 
   // ---------- Utilidades ----------
   // Texto SVG. max (mm): si el texto mide más, se comprime (lo hace ajustar()).
@@ -281,13 +285,111 @@
     return g.join("");
   }
 
+  // =====================================================================
+  //  Córdoba (Indarte): su propio talonario preimpreso.
+  //  Posiciones de la pestaña "REMITO R" de la planilla ENVIOS.xlsx de Córdoba
+  //  (Calibri 11 negrita; margen izq. 0 y sup. 1,9 cm; filas ocultas descontadas):
+  //  lo que hoy imprimen ellos con esa planilla. Todavía no hay foto del talonario,
+  //  así que la guía gris es aproximada (solo nombres de los datos).
+  // =====================================================================
+  const CBA = { der: 179.4, cant: 12.6, desc: 20.6, arriba: 106.2, alto: 5.29, limite: 174 };
+
+  // Renglones del cuerpo: bultos, detalle y leyendas (el transporte va en el recuadro de abajo)
+  function cuerpoCordoba(d, pos) {
+    const lista = [];
+    const bultos = Math.floor(+d.bultos || 0);
+    if (bultos > 0) {
+      const txt = bultos === 1 ? "BULTO CERRADO" : "BULTOS CERRADOS";
+      lista.push({ cant: String(bultos), desc: d.letras ? `( ${enLetras(bultos).toUpperCase()} ) ${txt}` : txt });
+    }
+    for (const l of d.detalle || []) {
+      const m = /^\s*(\d+(?:[.,]\d+)?)\s*[;|]\s*(.*)$/.exec(l);
+      lista.push(m ? { cant: m[1], desc: m[2].trim() } : { cant: "", desc: l });
+    }
+    for (const l of d.leyendas || []) lista.push({ cant: "", desc: l });
+    const c = corrimiento(pos, "cuerpo");
+    const ultimo = lista.length ? CBA.arriba + c.y + (lista.length - 1) * CBA.alto : -Infinity;
+    return { lista, ultimo };
+  }
+
+  function formularioCordoba() {
+    const g = [];
+    const guia = (x, y, txt, o = {}) => t(x, y, txt, { tam: 2.3, color: "#555", ...o });
+    g.push(`<rect x="3" y="3" width="204" height="291" rx="3" fill="none" stroke="#999" stroke-width="0.3" stroke-dasharray="2 1.5"/>`);
+    g.push(t(105, 12, "Talonario de Córdoba (Indarte): guía aproximada", { tam: 3.4, peso: 700, anclar: "middle", color: "#555" }));
+    g.push(t(105, 17, "Sin foto del talonario: los datos están donde los pone hoy la planilla ENVIOS.xlsx", { tam: 2.6, anclar: "middle", color: "#555" }));
+    g.push(guia(141.8, 34.4, "Fecha (día / mes / año)"));
+    g.push(guia(20.6, 53.4, "Razón social"), guia(CBA.der, 53.4, "Condición de IVA", { anclar: "end" }));
+    g.push(guia(20.6, 62.7, "Domicilio"), guia(CBA.der, 62.7, "CUIT", { anclar: "end" }));
+    g.push(guia(20.6, 77.2, "Localidad"), guia(65.3, 77.2, "Provincia"), guia(CBA.der, 77.2, "Ingresos brutos", { anclar: "end" }));
+    g.push(guia(119.6, 80.6, "Forma de pago", { anclar: "middle" }));
+    g.push(guia(CBA.cant, 100.6, "Cant.", { anclar: "middle" }), guia(CBA.desc, 100.6, "Descripción"));
+    g.push(`<line x1="8" y1="${CBA.limite + 2}" x2="202" y2="${CBA.limite + 2}" stroke="#999" stroke-width="0.25" stroke-dasharray="1.5 1"/>`);
+    g.push(guia(37.8, 260.4, "Transporte · C.U.I.T. · Domicilio del depósito"));
+    return g.join("");
+  }
+
+  function datosCordoba(d, pos) {
+    const g = [];
+    const grupo = (k, contenido) => {
+      if (!contenido) return;
+      const c = corrimiento(pos, k);
+      g.push(`<g data-campo="${k}" transform="translate(${+c.x.toFixed(2)} ${+c.y.toFixed(2)})">${contenido}</g>`);
+    };
+    // Fecha: día, mes y año separados, como la planilla (Calibri 14 negrita)
+    const f = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d.fecha || "");
+    if (f) {
+      const o = { tam: 14 * PT };
+      grupo("fecha", dato(142.3, 39.8, String(+f[3]), o) + dato(150.5, 39.8, "/", o) + dato(158.2, 39.8, String(+f[2]), { ...o, anclar: "middle" }) +
+        dato(164.7, 39.8, "/", { ...o, anclar: "middle" }) + dato(167.5, 39.8, f[1], o));
+    }
+    grupo("nombre", dato(20.6, 57.8, d.nombre, { max: 84 }));
+    grupo("iva", dato(CBA.der, 57.8, d.iva, { anclar: "end", max: 70 }));
+    grupo("direccion", dato(20.6, 67.1, d.direccion, { max: 84 }));
+    grupo("cuit", dato(CBA.der, 67.1, cuitTexto(d.dni), { anclar: "end", max: 70 }));
+    grupo("localidad", dato(20.6, 73.1, d.cp ? `${d.ciudad} (CP ${d.cp})`.trim() : d.ciudad, { max: 43 }));
+    grupo("provincia", dato(65.3, 73.1, d.provincia, { max: 40 }));
+    grupo("iibb", dato(CBA.der, 73.1, d.iibb, { anclar: "end", max: 70 }));
+    if (d.factura) grupo("factura", dato(10.6, 85.1, "Factura N°:") + dato(29.9, 85.1, d.factura, { max: 66 }));
+    grupo("venta", dato(119.6, 85.1, d.venta, { anclar: "middle", max: 44 }));
+    const c = cuerpoCordoba(d, pos);
+    grupo("cuerpo", c.lista.map((l, i) => {
+      const y = +(CBA.arriba + i * CBA.alto).toFixed(2);
+      return dato(CBA.cant, y, l.cant, { anclar: "middle", max: 9 }) + dato(CBA.desc, y, l.desc, { max: 150 });
+    }).join(""));
+    const valor = leerPlata(d.valor);
+    if (valor !== null && Number.isFinite(valor)) {
+      grupo("valor", dato(47.1, 196.7, "Valor declarado:", { anclar: "middle" }) + dato(65.3, 196.7, `$ ${plata(valor)}`));
+    }
+    // Recuadro de abajo: transporte, C.U.I.T. y domicilio del depósito
+    const tr = [d.transporte, d.cuitTransporte, d.deposito];
+    grupo("transp", tr.map((s, i) => dato(37.8, +(265.2 + i * 5.29).toFixed(2), s, { max: 120 })).join(""));
+    return g.join("");
+  }
+
+  // Talonario de cada sucursal (js/sucursales.js -> remito)
+  const MODELOS = {
+    villamaria: { formulario, datos, campos: CAMPOS },
+    cordoba: { formulario: formularioCordoba, datos: datosCordoba, campos: CAMPOS_CORDOBA },
+  };
+  const modelo = m => MODELOS[m] || MODELOS.villamaria;
+  const campos = m => modelo(m).campos;
+
+  // Avisos sobre el dibujo, según el talonario
+  function revisarModelo(d, pos, m) {
+    if (m !== "cordoba") return revisar(d, pos);
+    const c = cuerpoCordoba(d, pos);
+    return c.ultimo > CBA.limite ? ["El detalle y las leyendas llegan al valor declarado: sacá renglones o subí el bloque."] : [];
+  }
+
   // Hoja entera. o.completo: con el formulario; o.dx/o.dy: corrimiento de toda la hoja (mm);
-  // o.pos: corrimiento de cada dato { campo: {x, y} } (mm).
+  // o.pos: corrimiento de cada dato { campo: {x, y} } (mm); o.modelo: talonario ("villamaria" | "cordoba").
   function svg(d, o = {}) {
+    const M = modelo(o.modelo);
     const mover = o.dx || o.dy ? ` transform="translate(${+o.dx || 0} ${+o.dy || 0})"` : "";
     return `<svg class="remito" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 210 297" width="210mm" height="297mm" role="img" aria-label="Remito">` +
       `<rect width="210" height="297" fill="#fff"/>` +
-      `<g${mover}>${o.completo !== false ? `<g class="formulario">${formulario()}</g>` : ""}<g class="datos">${datos(d, o.pos || {})}</g></g></svg>`;
+      `<g${mover}>${o.completo !== false ? `<g class="formulario">${M.formulario()}</g>` : ""}<g class="datos">${M.datos(d, o.pos || {})}</g></g></svg>`;
   }
 
   // Comprime los textos que no entran en su lugar (data-max, en mm). La hoja tiene que estar en pantalla.
@@ -304,5 +406,5 @@
     });
   }
 
-  R.remito = { FORMULARIO, CAMPOS, svg, ajustar, armarCuerpo, revisar, enLetras, leerPlata, plata, fechaTexto, cuitTexto };
+  R.remito = { FORMULARIO, CAMPOS, campos, svg, ajustar, armarCuerpo, revisar: revisarModelo, enLetras, leerPlata, plata, fechaTexto, cuitTexto };
 })(window.Rotulos);

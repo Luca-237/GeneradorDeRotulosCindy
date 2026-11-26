@@ -2,6 +2,16 @@
 (function (R) {
   const { $, esc, toast, aEmail, aUsuario, confirmar } = R.util;
   let usuarios = [];
+  let sucursales = {}; // perfil_id -> sucursal (perfiles.sucursal)
+
+  // Sucursal de cada usuario: decide su rótulo, su remitente y su remito (js/sucursales.js)
+  function selectorSucursal(u) {
+    const lista = R.sucursal.lista();
+    if (lista.length < 2) return "";
+    const v = sucursales[u.id] || "central";
+    return `<select data-accion="sucursal" aria-label="Sucursal de ${esc(u.nombre || u.email)}" title="Sucursal">` +
+      lista.map(s => `<option value="${esc(s.clave)}" ${s.clave === v ? "selected" : ""}>${esc(s.nombre)}</option>`).join("") + `</select>`;
+  }
 
   function fecha(iso) {
     if (!iso) return "nunca";
@@ -18,6 +28,7 @@
             <option value="operador" ${u.rol === "operador" ? "selected" : ""}>Operador</option>
             <option value="superadmin" ${u.rol === "superadmin" ? "selected" : ""}>Superadmin</option>
           </select>
+          ${selectorSucursal(u)}
         </td>
         <td>${u.activo ? "Activo" : "Desactivado"}<small>Último ingreso: ${fecha(u.ultimo_ingreso)}</small></td>
         <td><div class="acciones-fila">
@@ -31,7 +42,10 @@
 
   async function cargar() {
     $("tabla-usuarios").innerHTML = `<tr><td colspan="4" class="cargando">Cargando usuarios…</td></tr>`;
-    try { usuarios = await R.api.usuarios.listar(); pintar(); }
+    try {
+      [usuarios, sucursales] = await Promise.all([R.api.usuarios.listar(), R.api.sucursales.deUsuarios()]);
+      pintar();
+    }
     catch (e) { $("tabla-usuarios").innerHTML = `<tr><td colspan="4">${esc(e.message)}</td></tr>`; }
   }
 
@@ -73,6 +87,13 @@
     $("form-usuario").addEventListener("submit", crear);
 
     $("tabla-usuarios").addEventListener("change", async e => {
+      if (e.target.dataset.accion === "sucursal") {
+        const id = e.target.closest("tr").dataset.id;
+        const u = usuarios.find(x => x.id === id);
+        await ejecutar(R.api.sucursales.asignar(id, e.target.value), `Sucursal de ${u.nombre || aUsuario(u.email)}: ${R.sucursal.nombre(e.target.value)}.`);
+        if (u.soy_yo) R.sucursal.cargar().catch(() => {}); // la propia: la página cambia de sucursal
+        return;
+      }
       if (e.target.dataset.accion !== "rol") return;
       const id = e.target.closest("tr").dataset.id;
       const u = usuarios.find(x => x.id === id);
